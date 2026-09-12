@@ -17,7 +17,7 @@ export interface AgentProvider {
 }
 
 /** The version of the persona prompt a model turn is assembled from (`docs/tone.md` §8). */
-export const PROMPT_VERSION = 'persona-vi@3'
+export const PROMPT_VERSION = 'persona-vi@5'
 
 /** The model this build calls. Overridable with `HOSTILEPET_MODEL`; ADR 0006 records the choice. */
 export const DEFAULT_MODEL = 'gpt-5.6-luna'

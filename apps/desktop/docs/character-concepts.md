@@ -106,9 +106,9 @@ The face is a **pixi canvas texture** drawn by the app and composited into the m
 
 | | Rig cost | Idle life | Voice hook | Distinction |
 | --- | --- | --- | --- | --- |
-| **Pin** | very low | gauge draining | "pin ông còn 15 phút" | the counter, made visible |
-| **Tivi** | very low | scanline drift, LED | "tôi ngồi đây cả ngày rồi" | privacy you can see; most AI-native |
-| **Băng** | very low | reels turning | "tôi đang đếm" | clearest demo visual |
+| **Pin** | very low | gauge draining | "pin con vợ còn 15 phút" | the counter, made visible |
+| **Tivi** | very low | scanline drift, LED | "anh ngồi đây cả ngày rồi" | privacy you can see; most AI-native |
+| **Băng** | very low | reels turning | "anh đang đếm" | clearest demo visual |
 
 All three rig in about the same time, so the tiebreaker is not cost:
 
@@ -149,7 +149,7 @@ Recorded so the decision is not silent, and so nobody rebuilds them by accident.
 | Mọt (weevil) | a pest that literally lives on what you waste | organic body — every expression is a mesh |
 | Xù (hedgehog) | quill clusters show policy state with no UI text | its one good trick is replicable by a panel |
 | Cóc (toad) | the grumpiest face with the fewest parts, sitting still | cheapest organic rig, but still a face rig |
-| Mực (octopus) | the activity log with a face; "tôi ghi sổ" | medium rig cost for the least product tie-in |
+| Mực (octopus) | the activity log with a face; "anh ghi sổ" | medium rig cost for the least product tie-in |
 | Cú (owl) | silent judgment; ear tufts as a second channel | safest and least distinctive of the set |
 
 The screen-face direction was selected for rig cost, expressiveness and theme fit. Dropping the organic family also removed an internal inconsistency: `faceMode` exists either way, and shipping two face architectures for one demo character is work with no payoff.
