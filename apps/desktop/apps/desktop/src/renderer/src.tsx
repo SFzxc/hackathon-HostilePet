@@ -44,7 +44,13 @@ function App() {
       if (url) URL.revokeObjectURL(url)
       url = URL.createObjectURL(new Blob([new Uint8Array(audio)], { type: 'audio/mpeg' }))
       player = new Audio(url)
-      void player.play().catch(() => { /* The text bubble remains the fallback. */ })
+      void player.play().catch(error => {
+        // The text bubble remains the fallback, but the failure must not be invisible: a clip the
+        // policy or the decoder refuses used to vanish without leaving a single trace, which is
+        // indistinguishable from a voice that is simply switched off. `default-src 'self'` does
+        // not cover `blob:`, so the policy names it (`media-src 'self' blob:`).
+        console.warn('desktop.speech.playback.failed', error)
+      })
     })
     return () => {
       unsubscribe()

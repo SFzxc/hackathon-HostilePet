@@ -501,7 +501,13 @@ else {
       lineTtlMs: petLineTtlMs,
       speak: text => {
         void synthesizePetSpeech(text).then(audio => {
-          if (audio && pet && !pet.isDestroyed()) pet.webContents.send('desktop:speech', audio)
+          if (!audio) {
+            // No key, or nothing to say: record it, because a voice that is switched off and a
+            // voice that is broken look identical from the outside.
+            console.info(JSON.stringify({ event: 'desktop.speech.skipped', code: 'no-audio', packId: null, ruleId: null }))
+            return
+          }
+          if (pet && !pet.isDestroyed()) pet.webContents.send('desktop:speech', audio)
         }).catch(error => {
           console.error(JSON.stringify({ event: 'desktop.speech.failed', code: error instanceof Error ? error.message : 'UNKNOWN', packId: null, ruleId: null }))
         })
