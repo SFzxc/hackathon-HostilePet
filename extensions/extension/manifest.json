@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Shopping Guardian · Behavior Recorder",
+  "version": "1.0.0",
+  "description": "Ghi sự kiện duyệt web và suy luận ý định cục bộ trên Shopee, Facebook và X/Twitter.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "tabs"
+  ],
+  "action": {
+    "default_title": "Mở Guardian Recorder"
+  },
+  "background": {
+    "service_worker": "recorder-background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "recorder.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "recorder-core.js",
+        "extractor.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "options_page": "recorder.html",
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "<all_urls>"
+  ]
+}

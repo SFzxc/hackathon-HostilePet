@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { assess, advance, validateOrders, permitValid } from '../extension/engine.js';
+const profile={budget:2000000,spent:1600000};
+test('over-budget product requires challenge',()=>assert.equal(assess({name:'Đèn',price:600000,category:'home'},profile,[]).decision,'CHALLENGE'));
+test('missing price is unknown, never zero-price approval',()=>assert.equal(assess({name:'Đèn',price:null},profile,[]).decision,'UNKNOWN'));
+test('category overlap is a question, not proof of duplication',()=>assert.match(assess({name:'Đèn',price:100000,category:'home'},profile,[{category:'home',name:'Bàn'}]).reasons.join(' '),/cùng nhóm/));
+test('three explicit confirmations required',()=>{let s={phase:'confirm',confirmations:0};s=advance(s,'yes');assert.notEqual(s.phase,'allowed');s=advance(s,'yes');assert.notEqual(s.phase,'allowed');assert.equal(advance(s,'yes').phase,'allowed');});
+test('no cancels confirmation',()=>assert.equal(advance({phase:'confirm',confirmations:2},'no').phase,'cancelled'));
+test('empty answers do not progress',()=>assert.equal(advance({phase:'question',index:0},'  ').index,0));
+test('import rejects negative prices and non-array',()=>{assert.throws(()=>validateOrders([{name:'x',price:-1}]));assert.throws(()=>validateOrders({}));});
+test('permit expires and binds exact product',()=>{assert.equal(permitValid({key:'a',until:100},'a',99),true);assert.equal(permitValid({key:'a',until:100},'b',99),false);assert.equal(permitValid({key:'a',until:100},'a',100),false);});

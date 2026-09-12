@@ -1,0 +1,7 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {extract} from '../extension/extractor.js';
+import {manualSpent,mergeChanges} from '../extension/store.js';
+test('displayed selected price takes precedence over stale JSON-LD',()=>{const node={textContent:'600.000 ₫',getAttribute:()=>null,closest:()=>null};const doc={querySelectorAll:selector=>selector.includes('ld+json')?[{textContent:JSON.stringify({'@type':'Product',name:'Main',offers:{price:500000}})}]:selector.includes('itemprop')?[node]:[],querySelector:()=>null};const p=extract(doc,'https://shopee.vn/a');assert.equal(p.price,600000);assert.equal(p.currentPriceVerified,true);});
+test('ambiguous related products never choose last product',()=>{const doc={querySelectorAll:()=>[{textContent:JSON.stringify([{'@type':'Product',name:'Main',offers:{price:200}},{'@type':'Product',name:'Related',offers:{price:10}}])}],querySelector:()=>null};assert.equal(extract(doc,'https://shopee.vn/a').price,null);});
+test('manual spending expires at month boundary',()=>assert.equal(manualSpent({spent:123,spentMonth:'2026-08'},new Date(2026,8,1)),0));
+test('stale profile update preserves events saved in another tab',()=>{const base={profile:{name:'A'},events:[],orders:[],saved:[]};const current={...base,events:[{id:'new'}]};const changed={...base,profile:{name:'B'}};assert.deepEqual(mergeChanges(current,base,changed).events,[{id:'new'}]);});

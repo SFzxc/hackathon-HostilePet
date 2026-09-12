@@ -1,0 +1,13 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {approvalStatus,createApproval,productIdentity} from '../extension/approval.js';
+const p={url:'https://shopee.vn/May-i.123.456?variant=red',price:500000,quantity:1};
+test('approval survives repeated attempts and variant query changes',()=>{const a=createApproval(p,100);for(let i=0;i<3;i++)assert.equal(approvalStatus(a,{...p,url:p.url.replace('red','blue'),name:'New title'},200),'approved');});
+test('same item canonical URL has same identity',()=>assert.equal(productIdentity(p),productIdentity({...p,url:'https://shopee.vn/product/123/456'})));
+test('lower priced variant keeps approval',()=>assert.equal(approvalStatus(createApproval(p,100),{...p,price:400000},200),'approved'));
+test('higher price asks only for changed amount',()=>assert.equal(approvalStatus(createApproval(p,100),{...p,price:600000},200),'changed'));
+test('quantity increase requires changed amount',()=>assert.equal(approvalStatus(createApproval(p,100),{...p,quantity:2},200),'changed'));
+test('unknown price can retry until a price becomes known',()=>{const a=createApproval({...p,price:null},100);assert.equal(approvalStatus(a,{...p,price:null},200),'approved');assert.equal(approvalStatus(a,p,200),'changed');});
+test('different product requires full review',()=>assert.equal(approvalStatus(createApproval(p,100),{...p,url:'https://shopee.vn/May-i.123.789'},200),'new'));
+test('approval expires after twenty minutes without sliding renewal',()=>assert.equal(approvalStatus(createApproval(p,100),p,1200100),'new'));
+test('unverified selected variant asks concise confirmation',()=>assert.equal(approvalStatus(createApproval({...p,variant:'red'},100),{...p,variant:'blue',currentPriceVerified:false},200),'changed'));
+test('verified same-price selected variant needs no reconfirmation',()=>assert.equal(approvalStatus(createApproval({...p,variant:'red'},100),{...p,variant:'blue',currentPriceVerified:true},200),'approved'));
