@@ -13,6 +13,10 @@ build/
 # Operating-system files
 .DS_Store
 
+# Raw art sources: the vendored sheet is committed with its provenance, the working files are not
+codex-pet-poses.png
+characters-src/
+
 # Video editing and raw footage are managed outside Git by default
 teams/demo-video/raw-footage/*
 !teams/demo-video/raw-footage/.gitkeep
