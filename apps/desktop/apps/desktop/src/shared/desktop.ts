@@ -200,4 +200,5 @@ export interface DesktopAPI {
   status: () => Promise<DesktopStatus>
   command: (command: DesktopCommand) => Promise<void>
   onStatus: (listener: (status: DesktopStatus) => void) => () => void
+  onSpeech: (listener: (audio: Uint8Array) => void) => () => void
 }

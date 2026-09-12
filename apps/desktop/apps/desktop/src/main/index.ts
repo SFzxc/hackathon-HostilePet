@@ -17,6 +17,7 @@ import { catalogPaths, isDemoCatalog, loadSiteCatalog, type SiteCatalog } from '
 import type { SiteTracker } from './events/site-tracker'
 import { FOCUS_PACK_ID, FOCUS_SIGNAL, startFocusWatcher, unknownFocusState, type FocusState, type FocusWatcher } from './focus/focus-watcher'
 import { petExpression } from './pet/expression'
+import { synthesizePetSpeech } from './pet/elevenlabs'
 import { createPresenter, type Presenter } from './pet/presenter'
 import { fitInWorkArea } from './window-position'
 import { isTrustedURL } from './trusted-url'
@@ -495,7 +496,17 @@ else {
     if (logged.detail !== null) reportBridge({ event: 'bridge.failed', code: 'event-log', detail: logged.detail })
     // The presenter is the only thing that can put a line on screen, and it tells the shell when
     // the pet's window has to grow or shrink around it.
-    presenter = createPresenter({ onChange: refreshPet, lineTtlMs: petLineTtlMs })
+    presenter = createPresenter({
+      onChange: refreshPet,
+      lineTtlMs: petLineTtlMs,
+      speak: text => {
+        void synthesizePetSpeech(text).then(audio => {
+          if (audio && pet && !pet.isDestroyed()) pet.webContents.send('desktop:speech', audio)
+        }).catch(error => {
+          console.error(JSON.stringify({ event: 'desktop.speech.failed', code: error instanceof Error ? error.message : 'UNKNOWN', packId: null, ruleId: null }))
+        })
+      }
+    })
     // The bridge runs in a packaged build too. It used to be gated on `app.isPackaged`, because
     // `dev-open` admission checks neither a token nor an origin — `docs/protocol.md` §1.2 owns
     // that decision, and records why the gate came down: Full Disk Access can only be granted to

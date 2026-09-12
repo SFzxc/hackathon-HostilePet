@@ -34,7 +34,7 @@ export interface Presenter {
   dismiss(): void
 }
 
-export function createPresenter(options: { lineTtlMs?: number; onChange?: () => void; notify?: boolean } = {}): Presenter {
+export function createPresenter(options: { lineTtlMs?: number; onChange?: () => void; notify?: boolean; speak?: (text: string) => void } = {}): Presenter {
   const lineTtlMs = options.lineTtlMs ?? 60_000
   const wantsNotification = options.notify ?? true
   let line: PetLine | null = null
@@ -75,6 +75,7 @@ export function createPresenter(options: { lineTtlMs?: number; onChange?: () => 
         site
       }
       accept(next)
+      if (say) options.speak?.(say)
       if (outcome.action !== 'notify') return { result: say ? 'bubble' : 'mood', detail: null }
       if (!wantsNotification) return { result: 'bubble', detail: 'notifications disabled' }
       try {

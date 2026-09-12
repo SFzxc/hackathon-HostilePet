@@ -10,6 +10,13 @@ const api: DesktopAPI = {
     }
     ipcRenderer.on('desktop:changed', handler)
     return () => { ipcRenderer.removeListener('desktop:changed', handler) }
+  },
+  onSpeech: (listener) => {
+    const handler = (_event: Electron.IpcRendererEvent, value: unknown): void => {
+      if (value instanceof Uint8Array) listener(value)
+    }
+    ipcRenderer.on('desktop:speech', handler)
+    return () => { ipcRenderer.removeListener('desktop:speech', handler) }
   }
 }
 contextBridge.exposeInMainWorld('desktop', api)

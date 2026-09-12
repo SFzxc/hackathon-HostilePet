@@ -35,6 +35,23 @@ function App() {
     void window.desktop.status().then(setStatus).catch(() => { setError('Could not read desktop status.') })
     return unsubscribe
   }, [])
+  useEffect(() => {
+    if (!window.desktop || location.hash !== '#pet') return
+    let player: HTMLAudioElement | null = null
+    let url: string | null = null
+    const unsubscribe = window.desktop.onSpeech(audio => {
+      player?.pause()
+      if (url) URL.revokeObjectURL(url)
+      url = URL.createObjectURL(new Blob([new Uint8Array(audio)], { type: 'audio/mpeg' }))
+      player = new Audio(url)
+      void player.play().catch(() => { /* The text bubble remains the fallback. */ })
+    })
+    return () => {
+      unsubscribe()
+      player?.pause()
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [])
   const command = (value: DesktopCommand): void => {
     void window.desktop.command(value).catch(() => { setError('The desktop action could not complete. Please try again.') })
   }

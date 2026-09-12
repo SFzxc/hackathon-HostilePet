@@ -21,6 +21,8 @@ export function dotenvPaths(appPath: string, exePath: string, resourcesPath: str
     // Development: `apps/desktop/apps/desktop` → `apps/desktop/.env`, the same hop the persona
     // and catalog resolvers make.
     join(appPath, '..', '..', '.env'),
+    // Monorepo development: allow the shared repository-root `.env` used by local commands.
+    join(appPath, '..', '..', '..', '..', '.env'),
     // Packaged, beside `HostilePet.app`: editable without opening the bundle. `exePath` names a
     // file, not a directory, so the first hop only drops the file name — four reach the folder
     // that holds the bundle (`…/HostilePet.app/Contents/MacOS/HostilePet` → `/Applications`).
