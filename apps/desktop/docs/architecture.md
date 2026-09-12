@@ -14,7 +14,7 @@ Electron main process — bundled Node.js, TypeScript
   kernel: deterministic rules, counters, scheduler, policy, leases
   pack runtime: manifests, grants, lifecycle
   agent: context → provider → tool proposals → validation → results
-  store: single writer, atomic JSON snapshot; secrets: macOS Keychain
+  store: single writer, atomic JSON snapshot; secrets: login Keychain, plus the model key in the git-ignored .env (ADR 0010)
                                       ↕ narrow, validated preload IPC
 Electron sandboxed renderers
   React: pet chat, onboarding, settings, packs, activity log
@@ -70,7 +70,7 @@ The kernel is domain-agnostic. It MUST NOT contain any site name, page selector,
 | Observed signals | Sensor pack / extension | Aggregated, sanitized, TTL-bounded, discarded after transmission. |
 | Wishlist, reminders | Kernel store | Idempotent by key. |
 | Pack-private settings | Kernel (`pack_kv`, namespaced by pack id) | A pack cannot read another pack's keys. |
-| API key | macOS Keychain | Never logged, never in SQLite, never sent to the extension. |
+| API key | `HOSTILEPET_OPENAI_API_KEY` in the git-ignored `.env`, else login Keychain (ADR 0010) | Read by the main process only; never logged, never in a store, never sent to the extension or a window. |
 
 ## 5. Event taxonomy
 

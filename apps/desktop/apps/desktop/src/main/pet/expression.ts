@@ -59,18 +59,29 @@ export function focusExpression(focus: FocusState): PetExpression | null {
 /**
  * The expression the pet wears right now.
  *
- * Precedence, and why: the tray's preview is an explicit visual demo control, so it wins while
- * it is set to something. Otherwise a live line from the agent owns the face — a reaction the
- * user just caused is the point of the product — and when that line expires or is dismissed
- * the Focus sensor decides. A sensor that cannot read leaves the pet idle rather than miming a
- * state it never saw, and an agent that said nothing changes nothing.
+ * Precedence, and why: a live line from the agent comes first — a reaction the user just caused
+ * is the point of the product, and it must stay visible while the pet goes back to watching,
+ * otherwise a turn every minute would bury the face under a permanent "reviewing". Then
+ * `reviewing`: a burst of observations is waiting or a turn is in flight, which the character
+ * draws as `review`. The Focus sensor comes last because a mode is a standing condition rather
+ * than an event, so anything the person just did outranks it. A sensor that cannot read leaves
+ * the pet idle rather than miming a state it never saw, and an agent that said nothing changes
+ * nothing.
+ *
+ * Nothing here is on demand: the shell used to be able to force `thinking` or `speaking` from a
+ * menu, and that preview is gone (ADR 0011). Every face the pet wears is earned by something
+ * that actually happened.
+ *
+ * `reviewing` is not an expression a pack names: it is the `thinking` state, and which sprite
+ * that draws is the character's business (`character.json` maps `thinking` → `review`). Keeping
+ * it out of `petExpressionSchema` is what lets a character choose its own face for it.
  */
 export function petExpression(
-  preview: 'idle' | 'thinking' | 'speaking',
   focus: FocusState,
-  agent: PetExpression | null = null
+  agent: PetExpression | null = null,
+  reviewing = false
 ): PetExpression {
-  if (preview !== 'idle') return preview
   if (agent) return agent
+  if (reviewing) return 'thinking'
   return focusExpression(focus) ?? 'idle'
 }

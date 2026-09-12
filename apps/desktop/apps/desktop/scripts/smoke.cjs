@@ -41,20 +41,13 @@ async function run() {
   const initialBounds = pet.getBounds()
   pet.setPosition(initialBounds.x - 100, initialBounds.y)
   const originalBounds = pet.getBounds()
-  await pet.webContents.executeJavaScript("window.desktop.command('preview-thinking')")
-  await wait(150)
-  assert.equal((await read()).preview, 'thinking')
-  assert.equal(pet.getBounds().height, 360)
-  assert.equal(await pet.webContents.executeJavaScript("!!document.querySelector('.thinking')"), true)
-  await writeFile(join(tmpdir(), 'hostilepet-thinking.png'), (await pet.webContents.capturePage()).toPNG())
-  await pet.webContents.executeJavaScript("window.desktop.command('preview-speaking')")
-  await wait(150)
-  assert.match(await pet.webContents.executeJavaScript('document.body.innerText'), /Get on with your work/)
-  await writeFile(join(tmpdir(), 'hostilepet-speaking.png'), (await pet.webContents.capturePage()).toPNG())
-  await pet.webContents.executeJavaScript("document.querySelector('.speech-heading button').click()")
-  await wait(150)
-  assert.equal((await read()).preview, 'idle')
+  // Nothing is previewed on demand and no model has run in this sandbox, so there is no bubble
+  // and the window stays at its resting size. The example bubble that used to be asserted here
+  // is gone by decision (ADR 0011) — the pet only speaks when a model gives it a line.
+  assert.equal((await read()).petLine, null)
+  assert.equal(await pet.webContents.executeJavaScript("!!document.querySelector('.speech')"), false)
   assert.deepEqual(pet.getBounds(), originalBounds)
+  await writeFile(join(tmpdir(), 'hostilepet-pet.png'), (await pet.webContents.capturePage()).toPNG())
   assert.equal(await pet.webContents.executeJavaScript("!!document.querySelector('.placeholder-label')"), false)
   await pet.webContents.executeJavaScript("window.desktop.command('open-settings')")
   let settings

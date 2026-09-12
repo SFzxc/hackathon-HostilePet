@@ -1,7 +1,7 @@
 # ADR 0006 — Agent library: LangGraph JS on LangChain core
 
-**Status:** accepted for this build
-**Related:** `docs/agent.md`, `docs/stack.md` §1 and §4, ADR 0004
+**Status:** accepted for this build; decision 6's key source is superseded by ADR 0010
+**Related:** `docs/agent.md`, `docs/stack.md` §1 and §4, ADR 0004, ADR 0010
 
 ## Context
 
@@ -21,7 +21,7 @@ Two constraints bound the choice:
 3. **Do not adopt the umbrella `langchain` package.** It pulls `langsmith` (a tracing client) and `@langchain/langgraph-sdk` (a LangGraph Platform HTTP client) into the application. `docs/stack.md` §3 forbids telemetry SDKs and neither is needed for a local loop.
 4. **Provider: OpenAI** (`AGENTS.md` decision 1). No provider package is installed: `packages/agent/src/provider.ts` makes one `POST /chat/completions` with `response_format: { type: 'json_object' }` through `fetch`, and parses `{say, mood, action}`.
 5. **Model: `gpt-5.6-luna`**, pinned as `DEFAULT_MODEL` in that file and overridable with `HOSTILEPET_MODEL`. The structured-output smoke test in `docs/agent.md` §7 has not been run — no key was available when this was wired — so the first real turn is the test. Revisit if the model proves unreliable at the contract; nothing downstream depends on the name.
-6. **Selection:** the curated provider stays the default. `HOSTILEPET_PROVIDER=openai` selects the model, and any missing piece — no Keychain item, unreadable persona artifact — falls back to the curated lines **with a reason the UI shows** (`docs/agent.md` §6). The API key comes from the login Keychain (`hostilepet.openai`, read in `apps/desktop/src/main/agent/keychain.ts`) and is passed to one call; it is never persisted or logged.
+6. **Selection:** `HOSTILEPET_PROVIDER=openai` selects the model, and any missing piece — no key, unreadable persona artifact — leaves the provider that has no words in place **with a reason the UI shows** (`docs/agent.md` §6). The API key comes from `HOSTILEPET_OPENAI_API_KEY` in the git-ignored `.env` or from the login Keychain (`hostilepet.openai`, read in `apps/desktop/src/main/agent/keychain.ts`), resolved in `apps/desktop/src/main/agent/api-key.ts`; it is passed to one call and is never persisted or logged. **ADR 0010 supersedes this decision's key source** and records why the environment was allowed in front of the Keychain. **ADR 0011 supersedes its fallback copy**: there are no curated lines to fall back to, so a turn that gets no line from a model says nothing, and calling the no-model provider the "default" no longer describes a choice between two voices.
 
 ## Boundaries
 
@@ -29,7 +29,7 @@ Two constraints bound the choice:
 - **No framework path may enable, widen, weaken or disable a rule**, or substitute for user approval. Interrupts and human-in-the-loop constructs do not replace a kernel grant.
 - **The four-call budget and action receipts stay application-owned.** A model-proposed action is a proposal, not a completed effect (`docs/agent.md` §4).
 - **No telemetry, no remote runtime.** LangSmith tracing is not configured and stays off; there is no LangGraph Platform deployment and no remote `graph-sdk` client.
-- **The API key stays in macOS Keychain**, never in env, state or a log.
+- **The API key stays out of the state file, the logs and the windows** (ADR 0010 amends the original "never in env" form of this line): it is read from the git-ignored `.env` or the login Keychain by the privileged core, and handed to one call.
 - **Node-only.** `packages/agent` is never imported into the renderer or the extension bundle (`docs/engineering.md` §2).
 
 ## Verification

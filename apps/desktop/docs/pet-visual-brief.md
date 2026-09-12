@@ -124,7 +124,7 @@ Review the Live2D Cubism SDK / Cubism Core licence terms before distributing, no
 
 Placeholder shapes are acceptable while the model is being rigged, but they MUST be labelled as placeholders in the UI, and no screenshot of a placeholder may be presented as the finished character (`AGENTS.md` non-negotiable #10).
 
-The desktop scaffold records placeholder artwork in Settings; the floating pet has no permanent label underneath. The tray and Settings offer explicit idle, thinking and text-above previews. Thinking uses an eyes-up pose and animated dots (static with Reduce Motion); the speech bubble is labelled “VISUAL DEMO” and can be dismissed. These previews make no model request and are not agent activity. The pet window expands only during a preview, preserving its bottom-center anchor where screen bounds permit.
+The desktop scaffold records placeholder artwork in Settings; the floating pet has no permanent label underneath. The character can wear `idle`, `thinking` (a `review` face: eyes up, and animated dots in the pack's own art — static with Reduce Motion) and the Focus and agent states in `docs/agent.md` §8. **Nothing is previewed on demand:** the tray and Settings no longer offer idle/thinking/text-above demos, so every face a person sees was earned by something that happened, and the speech bubble appears only when a model wrote a line (ADR 0011). The window expands for a bubble and collapses when it is dismissed, preserving its bottom-center anchor where screen bounds permit.
 
 ## Prior art worth borrowing
 

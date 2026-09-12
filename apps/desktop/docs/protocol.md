@@ -60,10 +60,12 @@ Re-pairing is the same flow. A friendlier code-entry UX is polish, not a require
 
 | Mode | Admission | Where it runs |
 | --- | --- | --- |
-| `dev-open` | No token, no origin check. Records whatever `Origin` arrived. | `pnpm dev`, `bridge:mock`, every test. |
+| `dev-open` | No token, no origin check. Records whatever `Origin` arrived. | `pnpm dev`, `bridge:mock`, every test, and — since the packaged gate came down — packaged builds. |
 | `paired` | Requires a configured token, then the recorded origin. Refuses to start without one. | Implemented, exercised by tests, not yet wired to Keychain or the tray. |
 
-`dev-open` is a development mode and MUST NOT ship: it is loopback-only, but any local process — including a web page opening `ws://127.0.0.1:54321` from a script — can present itself as the extension, because Chrome does not apply CORS to WebSockets and this mode checks no `Origin`. Two gates hold until the token is wired: the desktop shell does not start the bridge when `app.isPackaged`, and `hello` keeps its optional `token` field so the handshake shape does not change when pairing is switched on (§1.7.1). Keychain storage, the tray "Copy pairing token" item, the unpair flow and the cooldown counter are **not implemented**; they are this section's remaining work, and `bad_token` / `origin_not_paired` are the codes they will use.
+`dev-open` is a development mode and MUST NOT reach anyone beyond this machine: it is loopback-only, but any local process — including a web page opening `ws://127.0.0.1:54321` from a script — can present itself as the extension, because Chrome does not apply CORS to WebSockets and this mode checks no `Origin`.
+
+**The packaged gate is down, deliberately, for the demo.** The shell used to refuse to start the bridge when `app.isPackaged`, which kept `dev-open` out of every real bundle. That condition has been removed and the bridge start is now unconditional (`apps/desktop/src/main/index.ts`, in the startup path next to `createKernelHandler`). The reason is a constraint on the other sensor, not a change of mind about `dev-open`: Full Disk Access can only be granted to a real bundle, so with the gate up the packaged build could demonstrate the Focus half of the product and never the browser half, and the two could not be shown together. The cost is exactly the exposure described above, now present in the packaged build as well — accepted for a build that runs on the demo machine and nowhere else. Restoring the gate is one condition. What actually closes the exposure is wiring pairing; the one gate still standing is `hello`'s optional `token` field, kept so the handshake shape does not change when pairing is switched on (§1.7.1). Keychain storage, the tray "Copy pairing token" item, the unpair flow and the cooldown counter are **not implemented**; they are this section's remaining work, and `bad_token` / `origin_not_paired` are the codes they will use.
 
 ### 1.3 Handshake
 
@@ -217,7 +219,7 @@ Existing JSON fixtures for every message and every refusal reason below live in 
 ```
 
 - `escapeLabel` is rendered **verbatim**, visibly, for the whole life of the lease. A surface without it is a bug (non-negotiable 4).
-- `copy.source` is `model | fallback | mock`. `mock` MUST be shown as a stub wherever it appears — a stand-in line is never presented as generated copy (`docs/hackathon.md` §4).
+- `copy.source` is `model | fallback | mock`. `mock` MUST be shown as a stub wherever it appears — a stand-in line is never presented as generated copy (`docs/hackathon.md` §4). `fallback` is not copy at all: it marks a turn that produced no line, because no stand-in text exists to show instead (ADR 0011).
 - `demoMode: true` means a threshold was lowered to make the demo happen, and the surface MUST show the artificial badge (`docs/browser-pack.md` §2).
 - `expiresAt` is the authority. The extension MUST NOT extend it, recompute it, or treat a retry as a renewal. Renewal semantics are open (§4), so there is deliberately no renewal message.
 - `kind: "grayscale"` is not implemented by the shell and ships behind a flag at most (open decision 4). A surface that cannot render a kind MUST still show the escape and the lease's reason rather than rendering nothing.
@@ -328,7 +330,7 @@ Rules:
 
 | Failure | Required behaviour |
 | --- | --- |
-| Model offline / error | Rule engine continues; fallback line pack; override still works. UI shows "AI offline" distinctly from "browser disconnected". |
+| Model offline / error | Rule engine continues; no line is shown; override still works. UI shows "AI offline" distinctly from "browser disconnected". |
 | Desktop app not running | Extension shows disconnected and opens no new gates; existing leases expire by TTL. |
 | Quit / Pause | Quit releases every lease with `quit` before the process exits (§1.9.4). Pause is not implemented; until it is, the TTL is the fallback. |
 | Port in use | Clear error surfaced in the tray menu and in the bridge status line; no silent port change. The bridge reports `port-in-use`, stays stopped, and can be started again once the port is free. |
@@ -338,7 +340,7 @@ Rules:
 | Extension reload / update mid-gate | Leases drop; the kernel re-evaluates from persisted state. A reconnecting worker resyncs from `welcome.activeLeases`, and a silent peer keeps its leases until the heartbeat times it out. |
 | Snapshot write fails (disk full, permissions) | Keep running in memory, show a visible warning, retry with backoff, and never overwrite the last good snapshot. |
 | Local reminders | Guaranteed only while the app runs. On relaunch, overdue reminders surface. No promise of background notification after Quit until an OS mechanism exists. |
-| Tone validation fails twice | Fallback line is shown, the intervention still renders, the log records the fallback source (`docs/tone.md` §6). |
+| Tone validation fails twice | No line is shown, the intervention still renders, the log records that no model produced the turn (`docs/tone.md` §6–7, ADR 0011). |
 
 ## 4. Contracts to resolve before implementation
 

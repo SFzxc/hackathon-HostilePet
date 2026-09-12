@@ -40,7 +40,7 @@ The first release ships a browser sensor and two reference packs (short-form vid
 10. **Agent-drafted rule pack**: describe a commitment in natural language → review → approve → enforced live.
 11. Pack manager: list packs, inspect capabilities, enable/disable, delete data.
 12. Activity log: which pack caused what, with the honest outcome.
-13. Basic offline operation via the rule engine and fallback lines.
+13. Basic offline operation via the rule engine; with no model the pet shows its face and says nothing (ADR 0011).
 
 ## 3. Explicitly out of scope for this build
 

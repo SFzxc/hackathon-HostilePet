@@ -37,21 +37,21 @@ Beats 0:50–1:30 need tools that do not exist yet. The loop underneath them doe
 | 0:30–1:10 | The pet stays silent while the level is low, then speaks on its own turn and changes face as the level rises | A slow cadence instead of per-event chatter; escalation with real thresholds |
 | 1:10–1:40 | Dismiss the line, stop the simulator; the level decays | Every line has an escape; the pet does not stay angry at a finished session |
 
-Say the provider out loud while showing it. On a stock checkout that is **curated lines**, stamped `source: fallback`, and Settings names both; with `HOSTILEPET_PROVIDER=openai` and a key in Keychain it is the model, stamped `source: model`, and Settings names the model and the prompt version instead. Pick one before the demo and make the spoken script match what the screen says. Either way nothing was blocked, bought or deleted — there are no tools yet.
+Say the provider out loud while showing it. On a stock checkout there is **no model and no copy**: the pet changes face and says nothing, and Settings names the provider that produced no line. With `HOSTILEPET_PROVIDER=openai` and a key in `.env` or the Keychain, every line on screen is the model's, stamped `source: model`, and Settings names the model, the prompt version and which source the key came from. Run the demo on the model path; if no line appears, say that no model ran instead of filling the gap. Either way nothing was blocked, bought or deleted — there are no tools yet.
 
-The model path needs the venue's network and about a second per turn, and it degrades on its own: when the call fails, the line for that turn comes from the curated set and the log says so. Rehearse it once on venue wifi; if the room is offline, run the curated provider and say that.
+The model path needs the venue's network and about a second per turn, and it degrades on its own: when the call fails, that turn shows no line and the log says so. Rehearse it once on venue wifi; if the room is offline the pet will be quiet — show that, and say why, rather than promising copy that is not coming.
 
 ## 3. When time runs short
 
 Cut optional work in this order: real-site adapter → grayscale → animation polish → pack-manager cosmetics. Removing the second reference pack changes product scope and requires an explicit decision plus updates to `docs/product.md` and the demo script.
 
-**Never cut:** the escape hatch, offline fallback, the capability consent screen, honest activity logging, and the agent-drafted pack flow. Each is load-bearing for at least two criteria.
+**Never cut:** the escape hatch, honest silence when no model answers, the capability consent screen, honest activity logging, and the agent-drafted pack flow. Each is load-bearing for at least two criteria.
 
 ## 4. Honesty rules for the demo
 
 - Demo mode MUST be visibly badged wherever a threshold is artificially lowered.
 - Never present the sandboxed checkout as a real purchase, or a demo timer as real usage.
-- Never present a curated fallback line as model output. The UI names the provider and the source of the last line; the spoken script must match what the screen says. If the model ran once and fell back later, that is two different claims — show the one on screen.
+- Never present a line the model did not write as model output. Every line on screen is the model's; a turn where the model failed shows no line at all. The UI names the provider and the source of the last line, and the spoken script must match what the screen says.
 - Never claim an action the build cannot take. Until tools exist, the pet says things; it does not block, buy or delete anything.
 - Never claim mobile, other browsers, or whole-web support.
 - If something is mocked, say so in the same breath. The credibility of the privacy story depends on it.

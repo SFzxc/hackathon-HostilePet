@@ -4,13 +4,14 @@ import { createProvider, escalationLadder, type AgentOutcome } from '@hostile-pe
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { commandSchema, type DesktopStatus } from '../shared/desktop'
-import { readOpenAiKey } from './agent/keychain'
+import { resolveOpenAiKey } from './agent/api-key'
 import { loadPersona } from './agent/persona'
 import { createTurnRunner, type TurnRunner } from './agent/turn-runner'
 import { createKernelHandler } from './bridge/kernel-handler'
 import { createMockHandler } from './bridge/mock-handler'
 import { createBridge } from './bridge/server'
 import type { Bridge, BridgeLogRecord, BridgeHandler } from './bridge/types'
+import { dotenvPaths, loadDotEnv } from './env-file'
 import { createEventLog, type EventLog, type EventLogRecord } from './events/event-log'
 import { catalogPaths, isDemoCatalog, loadSiteCatalog, type SiteCatalog } from './events/site-catalog'
 import type { SiteTracker } from './events/site-tracker'
@@ -19,6 +20,15 @@ import { petExpression } from './pet/expression'
 import { createPresenter, type Presenter } from './pet/presenter'
 import { fitInWorkArea } from './window-position'
 import { isTrustedURL } from './trusted-url'
+
+/**
+ * `.env` belongs to the app, not only to the build. Without this read a packaged bundle has no
+ * parent to inherit from — launched from Finder, `process.env` is whatever launchd gave it — so
+ * `HOSTILEPET_PROVIDER` and the key below would fall back to their defaults on the one machine
+ * where the model was configured. It runs before the first `HOSTILEPET_*` read on purpose, and
+ * a value already exported in the shell still wins (`env-file.ts` owns that order).
+ */
+loadDotEnv(dotenvPaths(app.getAppPath(), app.getPath('exe'), process.resourcesPath))
 
 let pet: BrowserWindow | undefined
 let settings: BrowserWindow | undefined
@@ -32,9 +42,6 @@ let focusWatcher: FocusWatcher | undefined
  */
 let focus: FocusState = unknownFocusState('the Focus sensor has not started yet')
 const focusSensorEnabled = process.env.HOSTILEPET_FOCUS_SENSOR !== 'off'
-let preview: DesktopStatus['preview'] = 'idle'
-/** Why the bridge is not running, when that decision was ours rather than a failure. */
-let bridgeOffReason: string | null = null
 
 /**
  * The event → agent → pet chain. Every piece is optional on purpose: with no site catalog there
@@ -52,24 +59,83 @@ let catalog: SiteCatalog | null = null
 let catalogPath: string | null = null
 let catalogDetail: string | null = 'the site catalog has not been loaded yet'
 /**
- * `HOSTILEPET_PROVIDER=openai` calls the model; anything missing — no key in Keychain, no readable
- * persona artifact — leaves the curated provider in place and says which one is running. The key
- * is read here, at startup, and never leaves this scope (non-negotiable 8).
+ * `HOSTILEPET_PROVIDER=openai` calls the model; anything missing — no key in the environment or
+ * the Keychain, no readable persona artifact — leaves the provider that has no words in place
+ * and says which one is running. The key is read here, at startup, and never leaves this scope:
+ * not to a window, not to the event log, not to a log line.
  */
 const providerSetup =
   process.env.HOSTILEPET_PROVIDER === 'openai'
     ? (() => {
-        const key = readOpenAiKey()
+        const key = resolveOpenAiKey()
         const persona = loadPersona(app.getAppPath(), process.resourcesPath)
-        return { apiKey: key.key, personaTemplate: persona.template, detail: key.detail ?? persona.detail }
+        return { apiKey: key.key, keySource: key.source, personaTemplate: persona.template,
+          detail: key.detail ?? persona.detail }
       })()
-    : { apiKey: null, personaTemplate: null, detail: null }
+    : { apiKey: null, keySource: null, personaTemplate: null, detail: null }
 const providerInfo = createProvider(process.env, providerSetup)
+/**
+ * A millisecond value from the environment, with a floor.
+ *
+ * The rest of this file writes `Number.parseInt(x) || fallback`, which cannot express a demo:
+ * an absent value and a value of `0` take the same branch, and every clock below is meaningless
+ * at zero anyway. This keeps "unset" and "unparseable" on the fallback and clamps everything
+ * else, so a demo can ask for two seconds without also asking for a division by zero.
+ */
+function readMs(raw: string | undefined, fallback: number, min: number): number {
+  const parsed = Number.parseInt(raw ?? '', 10)
+  return Math.max(min, Number.isFinite(parsed) ? parsed : fallback)
+}
+/**
+ * Demo pacing — one switch for every clock between an observed event and the pet's face.
+ *
+ * The shipped cadence is deliberately slow (`docs/agent.md` §1.1): the pet watches for the
+ * better part of a minute before it has an opinion, and wears the face it earned for a minute
+ * after that. That is the product, and it is unwatchable on a stage where the whole beat is
+ * fifteen seconds long. `HOSTILEPET_DEMO_FAST=1` lowers the whole set together so that the
+ * cycle — land on a site, watch the pet react, leave, watch it go back to idle — fits in about
+ * five seconds. It lowers clocks only; no threshold that decides *whether* the pet reacts moves,
+ * so what the demo shows is still produced by the real sensor and the real ladder.
+ *
+ * Each clock stays individually overridable, and the lowering is reported in the window
+ * (`events.demoMode`), because `docs/hackathon.md` §4 requires an artificial threshold to be
+ * badged where it applies rather than implied.
+ */
+const demoFast = /^(1|true|on|yes)$/i.test((process.env.HOSTILEPET_DEMO_FAST ?? '').trim())
 /**
  * 30–60 s, clamped: the user asked for a slow cadence, and a cadence faster than the shortest
  * thing worth analysing would only produce turns about nothing.
  */
-const agentIntervalMs = Math.max(30_000, Math.min(60_000, Number.parseInt(process.env.HOSTILEPET_AGENT_INTERVAL_MS ?? '', 10) || 45_000))
+const agentIntervalMs = Math.max(30_000, Math.min(60_000, readMs(process.env.HOSTILEPET_AGENT_INTERVAL_MS, demoFast ? 30_000 : 45_000, 30_000)))
+/**
+ * How long the stream of observations must go quiet before the burst is sent to the model, and
+ * the ceiling on how long a burst may keep waiting however busy it stays. The two together are
+ * what the user tunes; the interval above is only the backstop for a stream that stopped without
+ * ever opening a burst.
+ */
+const agentSettleMs = readMs(process.env.HOSTILEPET_AGENT_SETTLE_MS, demoFast ? 2_000 : 20_000, 1_000)
+const agentMaxWaitMs = Math.max(agentSettleMs, readMs(process.env.HOSTILEPET_AGENT_MAX_WAIT_MS, demoFast ? 4_000 : 60_000, agentSettleMs))
+/**
+ * How long one site waits between two `site.observed` records. The browser ticks once a second,
+ * so this is the clock that decides how much of that resolution becomes history — the tracker
+ * accrues every tick either way. Lowering it towards 1000 makes the event log show events at the
+ * transport's own rate; raise it and the log stays sparse while the accrual stays fine.
+ */
+const observeThrottleMs = readMs(process.env.HOSTILEPET_OBSERVE_THROTTLE_MS, demoFast ? 1_000 : 10_000, 1_000)
+/**
+ * How long the pet wears the face a turn earned. This is the clock a person actually sees: the
+ * agent's mood is dropped when this expires, and that expiry is also what repaints the window,
+ * so it — not the presence window below — is what puts the pet back to idle.
+ */
+const petLineTtlMs = readMs(process.env.HOSTILEPET_PET_LINE_TTL_MS, demoFast ? 5_000 : 60_000, 1_000)
+/**
+ * How long a page that went silent still counts as being looked at, and how long it keeps its
+ * accrued time before being forgotten. Presence is what stops the pet pulling a face at a tab
+ * nobody is looking at; `pageStaleMs` is raised to it when set lower, so the pair cannot be
+ * configured into a contradiction.
+ */
+const presenceStaleMs = readMs(process.env.HOSTILEPET_PRESENCE_STALE_MS, demoFast ? 3_000 : 15_000, 500)
+const pageStaleMs = readMs(process.env.HOSTILEPET_PAGE_STALE_MS, demoFast ? 20_000 : 90_000, presenceStaleMs)
 const rendererFile = join(__dirname, '../renderer/index.html')
 const devURL = !app.isPackaged ? process.env.ELECTRON_RENDERER_URL : undefined
 const baseURL = devURL ?? pathToFileURL(rendererFile).href
@@ -77,7 +143,7 @@ const bridgeSnapshot = (): DesktopStatus['bridge'] => {
   const state = bridge?.status()
   if (!state) {
     return { phase: 'stopped', host: BRIDGE_HOST, port: BRIDGE_DEFAULT_PORT, security: 'dev-open',
-      peer: null, activeLeases: 0, detail: bridgeOffReason }
+      peer: null, activeLeases: 0, detail: null }
   }
   return { phase: state.phase, host: state.host, port: state.port, security: state.security,
     peer: state.peer && { extensionVersion: state.peer.extensionVersion, origin: state.peer.origin, sensors: state.peer.sensors.length },
@@ -164,8 +230,16 @@ const status = (): DesktopStatus => {
   const line = presenter?.current() ?? null
   return {
     petVisible: pet?.isVisible() ?? false,
-    preview,
-    petExpression: petExpression(preview, focus, presenter?.expression() ?? null),
+    // The face the agent earned is only worn while the site it was about is still in front of
+    // the person. That is the whole of "leaving the tab changes the pet": the page says it went
+    // hidden, the tracker stops calling its site present, and the next status paint drops the
+    // mood. The Focus expression underneath is untouched, because Focus is about the machine
+    // and is still true when the browser is not.
+    petExpression: petExpression(
+      focus,
+      presenter?.expression(Date.now(), tracker?.presentSites()) ?? null,
+      turnRunner?.state().reviewing ?? false
+    ),
     petLine: line?.say ? { say: line.say, source: line.source, badge: line.badge, at: line.at } : null,
     bridge: bridgeSnapshot(),
     focus: focusSnapshot(),
@@ -303,7 +377,9 @@ const PET_MARGIN = 30
 function refreshPet(): void {
   if (pet) {
     const line = presenter?.current() ?? null
-    const expanded = preview !== 'idle' || line !== null
+    // A bubble is the only thing that grows the window: nothing is previewed on demand any more
+    // (ADR 0011), so the pet is at its resting size unless a model actually said something.
+    const expanded = line !== null
     const { width, height } = expanded ? PET_WINDOW_EXPANDED : PET_WINDOW
     const bounds = pet.getBounds()
     if (bounds.width !== width || bounds.height !== height) {
@@ -313,11 +389,6 @@ function refreshPet(): void {
     pet.showInactive()
   }
   notify()
-}
-function previewPet(value: DesktopStatus['preview']): void {
-  preview = value
-  log(`preview-${value}`)
-  refreshPet()
 }
 /** The always-available escape from a line: dismissing it is one command, never a dialog. */
 function dismissLine(): void {
@@ -393,9 +464,6 @@ else {
       if (!trusted(event) || args.length !== 1) throw new Error('INVALID_IPC')
       const command = commandSchema.parse(args[0])
       if (command === 'open-settings') openSettings()
-      else if (command === 'preview-thinking') previewPet('thinking')
-      else if (command === 'preview-speaking') previewPet('speaking')
-      else if (command === 'preview-idle') previewPet('idle')
       else if (command === 'open-focus-permission') void openFocusPermission()
       else if (command === 'relaunch') relaunch()
       else if (command === 'dismiss-line') dismissLine()
@@ -425,33 +493,47 @@ else {
     if (logged.detail !== null) reportBridge({ event: 'bridge.failed', code: 'event-log', detail: logged.detail })
     // The presenter is the only thing that can put a line on screen, and it tells the shell when
     // the pet's window has to grow or shrink around it.
-    presenter = createPresenter({ onChange: refreshPet })
-    // The bridge in this slice is a development surface: the admission check is `dev-open`,
-    // and no pack runtime exists yet. It therefore does not run in a packaged build — see
-    // `docs/protocol.md` §1.2, which owns that decision.
-    if (app.isPackaged) {
-      bridgeOffReason = 'the development bridge is disabled in a packaged build; it returns when a real pack runtime does.'
-      reportBridge({ event: 'bridge.failed', code: 'packaged', detail: bridgeOffReason })
-    } else {
-      let handler: BridgeHandler
-      if (handlerKind === 'mock') handler = createMockHandler()
-      else {
-        const kernel = createKernelHandler({ catalog, eventLog })
-        handler = kernel.handler
-        tracker = kernel.tracker
-      }
-      bridge = createBridge({
-        host: BRIDGE_HOST,
-        port: BRIDGE_DEFAULT_PORT,
-        security: 'dev-open',
-        handler,
-        log: reportBridge,
-        onStatus: () => { notify() }
+    presenter = createPresenter({ onChange: refreshPet, lineTtlMs: petLineTtlMs })
+    // The bridge runs in a packaged build too. It used to be gated on `app.isPackaged`, because
+    // `dev-open` admission checks neither a token nor an origin — `docs/protocol.md` §1.2 owns
+    // that decision, and records why the gate came down: Full Disk Access can only be granted to
+    // a real bundle, so a packaged build with no bridge could demonstrate the Focus half of the
+    // product or the browser half, never both at once. The exposure the gate held back is real
+    // and unchanged: until pairing is wired, any local process can present itself as the
+    // extension. That is a demo-scoped trade, not a shipping position.
+    let handler: BridgeHandler
+    if (handlerKind === 'mock') handler = createMockHandler()
+    else {
+      // `turnRunner` is assigned further down, but this only ever runs from a live signal, long
+      // after startup — so the closure reads the current value rather than a captured one.
+      //
+      // The `notify()` is load-bearing, not decoration: the bridge publishes a status on peer
+      // changes but not after a signal (`server.ts`, the `handler.onSignal` call), so without
+      // this the pet would never be repainted at the moment a burst opens, and the `review`
+      // face would only ever appear by accident, whenever something else happened to refresh.
+      const kernel = createKernelHandler({
+        catalog,
+        eventLog,
+        observeThrottleMs,
+        onRecorded: () => {
+          turnRunner?.notifyActivity()
+          notify()
+        }
       })
-      const state = await bridge.start()
-      if (state.phase !== 'listening') {
-        reportBridge({ event: 'bridge.failed', code: state.phase, detail: state.detail ?? 'no detail' })
-      }
+      handler = kernel.handler
+      tracker = kernel.tracker
+    }
+    bridge = createBridge({
+      host: BRIDGE_HOST,
+      port: BRIDGE_DEFAULT_PORT,
+      security: 'dev-open',
+      handler,
+      log: reportBridge,
+      onStatus: () => { notify() }
+    })
+    const state = await bridge.start()
+    if (state.phase !== 'listening') {
+      reportBridge({ event: 'bridge.failed', code: state.phase, detail: state.detail ?? 'no detail' })
     }
     pet = new BrowserWindow({ ...PET_WINDOW, x: area.x + area.width - PET_WINDOW.width - PET_MARGIN,
       y: area.y + area.height - PET_WINDOW.height - PET_MARGIN,
@@ -511,8 +593,14 @@ else {
         tracker,
         eventLog,
         provider: providerInfo.provider,
-        apply: (outcome: AgentOutcome, level: number) => presenter?.present(outcome, level) ?? { result: 'unavailable', detail: 'the pet window is not ready' },
-        intervalMs: agentIntervalMs
+        apply: (outcome: AgentOutcome, level: number, site: string | null) => presenter?.present(outcome, level, site) ?? { result: 'unavailable', detail: 'the pet window is not ready' },
+        intervalMs: agentIntervalMs,
+        settleMs: agentSettleMs,
+        maxWaitMs: agentMaxWaitMs,
+        // Closes the loop the `onRecorded` notify opens: a turn that decides `none` never touches
+        // the presenter, so without this the pet would stay frozen in `review` after the burst
+        // that started it had already been sent — indefinitely, if the person stopped browsing.
+        onTurn: () => notify()
       })
       notify()
       turnRunner.start()

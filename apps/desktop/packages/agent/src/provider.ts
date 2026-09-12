@@ -1,5 +1,4 @@
 import type { AgentContext } from './context'
-import { bucketFor, FALLBACK_LINES } from './lines/vi'
 import { escalationLadder, petDecisionSchema, type PetDecision } from './outcome'
 import { buildPersonaPrompt } from './prompt'
 
@@ -25,29 +24,27 @@ export const DEFAULT_MODEL = 'gpt-5.6-luna'
 export const DEFAULT_BASE_URL = 'https://api.openai.com/v1'
 
 /**
- * Deterministic stand-in. It reads the same context a model would and picks a curated line for
- * the level and bucket, rotating so the demo does not repeat itself — but it analyses nothing,
- * and every turn it produces is labelled `fallback`.
+ * The stand-in for a run with no model behind it. It reads the same context a model would and
+ * picks the face that context earns — but it owns no words, so it never speaks: the model owns
+ * every line the pet says, and a stand-in has none of its own (ADR 0011). Every turn it
+ * produces is stamped `source: 'fallback'`, and every one of them reaches the user as a face
+ * and an event-log record, not a sentence.
  */
 export function createFakeProvider(): AgentProvider {
-  let turn = 0
   return {
     id: 'fake',
     isModel: false,
     async decide(context) {
-      const level = context.level >= 1 ? (context.level as 1 | 2 | 3) : 1
-      const bucket = bucketFor(context.facts[0]?.category ?? 'other')
-      const lines = FALLBACK_LINES[level][bucket]
-      const say = lines[turn % lines.length] ?? lines[0] ?? ''
-      turn += 1
       const band = escalationLadder[context.level]
-      return { say, mood: band.defaultMood, action: band.defaultAction }
+      // `mood_only` is the one action in every band that carries no words; `notify` and
+      // `say_bubble` would need a line this provider does not have.
+      return { say: '', mood: band.defaultMood, action: 'mood_only' }
     }
   }
 }
 
 export type OpenAiProviderOptions = {
-  /** Read from Keychain by the caller (non-negotiable 8). Never logged, never persisted. */
+  /** Read from the environment or the login Keychain by the caller. Never logged, never persisted. */
   apiKey: string
   model?: string
   baseUrl?: string
@@ -82,9 +79,10 @@ function trim(text: string, max = 200): string {
 /**
  * The real provider: one chat completion per turn, JSON out, no tools.
  *
- * Every failure mode — no network, a 401, a timeout, prose instead of JSON — throws, and the turn
- * falls back to a curated line for the same level. A model outage must never mean a silent pet
- * with no explanation (`docs/tone.md` §6).
+ * Every failure mode — no network, a 401, a timeout, prose instead of JSON — throws, and the
+ * turn ends without a line: the pet changes face and the log records what went wrong
+ * (`docs/tone.md` §6). There is no stand-in copy to hide an outage behind, so Settings is where
+ * a person finds out the model did not answer (ADR 0011).
  */
 export function createOpenAiProvider(options: OpenAiProviderOptions): AgentProvider {
   const model = options.model ?? DEFAULT_MODEL
@@ -132,8 +130,13 @@ export function createOpenAiProvider(options: OpenAiProviderOptions): AgentProvi
 export type ProviderSetup = {
   /** The persona artifact, or null when it could not be read. */
   personaTemplate: string | null
-  /** The Keychain key, or null when it is not stored. */
+  /** The model key from the environment or the Keychain, or null when neither has one. */
   apiKey: string | null
+  /**
+   * Where the key came from. Provenance is shown, not guessed: a run that used a key pasted into
+   * `.env` must not read as one that used the Keychain (ADR 0010).
+   */
+  keySource?: 'env' | 'keychain' | null
   model?: string
   baseUrl?: string
   /** Plain-language reason the key or artifact is missing, shown in the UI. */
@@ -142,8 +145,8 @@ export type ProviderSetup = {
 
 /**
  * Provider selection. `HOSTILEPET_PROVIDER=openai` calls the model; anything missing — no key in
- * Keychain, no readable persona artifact — falls back to the curated provider **and says why**.
- * It never silently pretends a model ran.
+ * the environment or the Keychain, no readable persona artifact — falls back to the provider
+ * that has no words **and says why**. It never silently pretends a model ran.
  */
 export function createProvider(
   env: NodeJS.ProcessEnv = process.env,
@@ -155,13 +158,13 @@ export function createProvider(
   if (setup.apiKey === null || setup.apiKey.trim().length === 0) {
     return {
       provider: createFakeProvider(),
-      detail: `${setup.detail ?? 'OpenAI is selected but no API key was found in Keychain.'} Using the curated lines — no model ran.`
+      detail: `${setup.detail ?? 'OpenAI is selected but no API key was found in the environment or the Keychain.'} No model ran, so the pet has no lines to say.`
     }
   }
   if (setup.personaTemplate === null) {
     return {
       provider: createFakeProvider(),
-      detail: `${setup.detail ?? `OpenAI is selected but the persona artifact (prompts/persona.md) could not be read (${PROMPT_VERSION}).`} Using the curated lines — no model ran.`
+      detail: `${setup.detail ?? `OpenAI is selected but the persona artifact (prompts/persona.md) could not be read (${PROMPT_VERSION}).`} No model ran, so the pet has no lines to say.`
     }
   }
   return {
@@ -171,6 +174,6 @@ export function createProvider(
       baseUrl: env.HOSTILEPET_OPENAI_BASE_URL ?? setup.baseUrl,
       personaTemplate: setup.personaTemplate
     }),
-    detail: `${model} · ${PROMPT_VERSION} · key from Keychain`
+    detail: `${model} · ${PROMPT_VERSION} · key from ${setup.keySource === 'keychain' ? 'Keychain' : 'env'}`
   }
 }

@@ -79,27 +79,33 @@ Runs on every generated line before display. Cheap, deterministic, no model.
 
 The deterministic checks are a floor, not proof of complete semantic honesty. Before implementing grounded copy, define typed facts and action receipts, including units, freshness and partial outcomes. Test wrong-unit claims, written-out numbers and paraphrased success claims. Use system-rendered factual confirmations where a text validator cannot establish correctness.
 
-Speech suppression applies before generation, retry and fallback. It does not prevent an explicit user request from receiving a response. Fallback profile/intensity mapping remains to be specified; it must include the silent profile.
+Speech suppression applies before generation and retry. It does not prevent an explicit user request from receiving a response. Suppression and failure now reach the same state — nothing is said (§7) — so a future profile/intensity mapping has one silent outcome to specify rather than two.
 
 Rejections are never silent: log `tone.rejected` with the check id, `packId`, `ruleId`, and the prompt version. The check id is what makes the failure ladder and the eval meaningful.
 
 ## 6. Failure ladder
 
-`generate → validate → (fail) retry once with the reason appended → (fail) fallback line`
+`generate → validate → (fail) retry once with the reason appended → (fail) silence`
 
 - The retry gets one more attempt with the specific violation named. Never loop further.
 - The intervention still renders even when the line fails: the gate, the escape button, and the plain-language reason are produced by the kernel, not by the model.
-- The activity log marks fallback-sourced lines as fallback. We never claim the model said something it did not.
+- The activity log marks the source of every turn. We never claim the model said something it did not, and there is no stand-in copy that could be mistaken for it: a turn that produced no line carries an empty line and `source: fallback` (`docs/tone.md` §7).
 - Three consecutive rejections of the same check in one session mark the provider suspect and widen logging.
 
-## 7. Fallback line packs
+## 7. No fallback lines
 
-`packages/tone/fallback/vi.json` — a small curated set, roughly five lines per policy state × two intensities, deliberately plainer than the persona. In this build the curated set lives in `packages/agent/src/lines/vi.ts`, is the **default** provider, and is also what every failed model turn falls back to.
+**The model owns every word the pet says.** There is no curated set behind it: the file that used to
+hold one — `packages/agent/src/lines/vi.ts`, described here as the default provider and as the
+safety net for a failed turn — is deleted (ADR 0011). A turn that cannot get a line from a model
+says nothing at all.
 
-- Same floor applies: no fabrication, no cruelty, exit legible.
-- No placeholders that require data which may be missing; fallbacks must work with nothing but the state.
-- Used only when the model is unreachable or validation fails twice. They are a safety net, not the voice.
-- Tone lint runs on them like any other pack (`docs/engineering.md` §3).
+- Missing copy never blocks the intervention: the face changes, the gate and its escape are the
+  kernel's, and the event log records that no model produced this turn.
+- Silence is stated, never hidden: Settings names the provider and why no model ran
+  (`docs/agent.md` §6), and every turn is stamped with its source.
+- What a person sees is therefore unambiguous: **a line on screen means a model wrote it.**
+- The old rule that these lines had to pass the same floor is gone with them; the validator now
+  runs only on model output, which is the only copy that exists.
 
 ## 8. Prompt versioning and the tone check
 
@@ -109,7 +115,7 @@ Rejections are never silent: log `tone.rejected` with the check id, `packId`, `r
 
 - 6 scenarios — first warning, gate, override just happened, no data available, model offline, very late night — one sample each.
 - Automated checks only: validator pass rate, and zero fabricated-number or capability-claim violations.
-- Threshold: 6/6 lines pass the validator. One fabricated number fails the run.
+- Threshold: 5/5 lines pass the validator. One fabricated number fails the run. `model offline` is the sixth scenario and has no line to grade: it asserts that nothing is shown and that the turn is stamped `fallback` (ADR 0011).
 - Run it before committing a prompt change and before the demo rehearsal.
 
 The full harness — 24 scenarios × 3 samples with a rubric judge scoring in-character voice, groundedness and "would this annoy you by the third time" — is post-hackathon work (`docs/vision.md`). The validator itself is runtime code, covered by the required headless checks (`docs/engineering.md` §3), and it is what lets the model own the wording.

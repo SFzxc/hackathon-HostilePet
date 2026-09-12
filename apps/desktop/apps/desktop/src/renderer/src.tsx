@@ -38,24 +38,19 @@ function App() {
   const command = (value: DesktopCommand): void => {
     void window.desktop.command(value).catch(() => { setError('The desktop action could not complete. Please try again.') })
   }
-  const preview = status?.preview ?? 'idle'
   // The permission button appears for exactly one cause: macOS refusing the read. A sensor that
   // was switched off, or a database that is missing or malformed, is unread too — sending the
   // user to a permission switch for those would fix nothing.
   const needsPermission = status?.focus.reason === 'permission'
   // The pet's own line is the agent's. It always carries where it came from, and it can always
-  // be dismissed — that escape is required of any intervention (`docs/agent.md` §8). The manual
-  // preview owns the bubble while it is in use, because that control exists to show a face,
-  // not to argue with the agent.
+  // be dismissed — that escape is required of any intervention (`docs/agent.md` §8). A line
+  // exists only when a model wrote one: there is no demo bubble and no stand-in copy to show in
+  // its place (ADR 0011), so a pet with nothing to say is simply a pet with no bubble.
   const line = status?.petLine ?? null
   if (location.hash === '#pet') return <main className="pet-window">
-    {preview === 'idle' && line && <div className="speech agent" role="status">
-      <div className="speech-heading"><span>{line.source === 'model' ? 'HOSTILEPET · MODEL' : 'HOSTILEPET · CURATED LINE'}</span><button aria-label="Dismiss line" onClick={() => { command('dismiss-line') }}>×</button></div>
+    {line && <div className="speech agent" role="status">
+      <div className="speech-heading"><span>HOSTILEPET · MODEL</span><button aria-label="Dismiss line" onClick={() => { command('dismiss-line') }}>×</button></div>
       <p>{line.say}</p>
-    </div>}
-    {preview !== 'idle' && <div className="speech" role="status">
-      <div className="speech-heading"><span>VISUAL DEMO</span><button aria-label="Dismiss preview" onClick={() => { command('preview-idle') }}>×</button></div>
-      {preview === 'thinking' ? <p>Thinking<span className="thinking-dots" aria-hidden="true"><i/><i/><i/></span></p> : <p>I&apos;m here. Get on with your work.</p>}
     </div>}
     <div className="drag-pet" title="Drag to move · Settings in menu bar"><Pet expression={status?.petExpression ?? 'idle'}/></div>
     {error && <span role="alert">{error}</span>}

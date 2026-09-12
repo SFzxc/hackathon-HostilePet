@@ -1,5 +1,5 @@
 import { z } from 'zod'
-export const commandSchema = z.enum(['show-pet', 'hide-pet', 'open-settings', 'quit', 'preview-thinking', 'preview-speaking', 'preview-idle', 'open-focus-permission', 'relaunch', 'dismiss-line'])
+export const commandSchema = z.enum(['show-pet', 'hide-pet', 'open-settings', 'quit', 'open-focus-permission', 'relaunch', 'dismiss-line'])
 export type DesktopCommand = z.infer<typeof commandSchema>
 
 /**
@@ -67,10 +67,12 @@ export type FocusSnapshot = z.infer<typeof focusStatusSchema>
 /**
  * The expressions the pet can wear.
  *
- * `idle`, `thinking` and `speaking` are the shell's own preview states; `focused`, `sleeping`
- * and `dozing` are the only ones a Focus reading may produce (ADR 0007); `suspicious`,
- * `intervene` and `pleased` are the agent's, from the visual state machine in
- * `docs/agent.md` §8.
+ * `idle` is the resting face and `thinking` is what a burst waiting to be analysed, or a turn in
+ * flight, is drawn as. `focused`, `sleeping` and `dozing` are the only ones a Focus reading may
+ * produce (ADR 0007); `suspicious`, `intervene` and `pleased` are the agent's, from the visual
+ * state machine in `docs/agent.md` §8. `speaking` belongs to the character vocabulary a pack
+ * must satisfy (`docs/pet-visual-brief.md`); the shell has no state of its own that forces it,
+ * now that nothing is previewed on demand (ADR 0011).
  *
  * This vocabulary is provisional: `docs/pet-visual-brief.md` owns the state contract that a
  * character pack must satisfy, and these are additions to it, not the pack's own set.
@@ -87,10 +89,10 @@ const AGENT_EXPRESSIONS: readonly PetExpression[] = ['suspicious', 'intervene', 
 /**
  * What the shell may say about the agent.
  *
- * Two claims are kept apart on purpose. `isModel` is false while the provider is the curated
- * stand-in, so nothing in the UI can call a fallback line "AI"; a line can never exist without
- * a source, because provenance is stamped by the runtime and never by whatever wrote the words
- * (`docs/tone.md` §6).
+ * Two claims are kept apart on purpose. `isModel` is false while the provider running has no
+ * words of its own, so a turn that ran without a model can never be shown as copy a model wrote;
+ * a line can never exist without a source, because provenance is stamped by the runtime and
+ * never by whatever wrote the words (`docs/tone.md` §6).
  */
 export const agentStatusSchema = z.object({
   provider: z.enum(['fake', 'openai']),
@@ -152,11 +154,10 @@ export type CatalogSnapshot = z.infer<typeof catalogStatusSchema>
 
 export const statusSchema = z.object({
   petVisible: z.boolean(),
-  preview: z.enum(['idle', 'thinking', 'speaking']),
   /**
-   * What the pet is actually wearing, after the sensor, the agent and the manual preview are
-   * folded together. The renderer draws this and never derives it, so the sources can disagree
-   * only where this schema allows them to.
+   * What the pet is actually wearing, after the sensor and the agent are folded together. The
+   * renderer draws this and never derives it, so the sources can disagree only where this
+   * schema allows them to.
    */
   petExpression: petExpressionSchema,
   /** The one line the pet is showing, or null. Already validated and provenance-stamped. */

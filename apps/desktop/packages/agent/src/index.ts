@@ -12,9 +12,9 @@
  *   clamps (`outcome.ts`) and the kernel decides the level.
  * - A model never declares its own provenance: `source` is stamped by `run-turn.ts`.
  * - Node-only. Never imported into the renderer or the extension bundle.
- * - The API key is read from macOS Keychain by the privileged core and handed to
- *   `createOpenAiProvider` for one call; it is never read from this package's environment,
- *   never persisted, and never logged.
+ * - The API key is read by the privileged core — from `.env` or the login Keychain (ADR 0010) —
+ *   and handed to `createOpenAiProvider` for one call; it is never read from this package's
+ *   environment, never persisted, and never logged.
  *
  * Still open (`docs/agent.md` §4): the tool-dispatch format. This slice has no tools, which is
  * why the LangGraph runtime pinned in ADR 0006 is not wired yet — there is no graph to route.
@@ -22,7 +22,6 @@
  * a dependency without adding a decision.
  */
 export * from './context'
-export * from './lines/vi'
 export * from './outcome'
 export * from './prompt'
 export * from './provider'

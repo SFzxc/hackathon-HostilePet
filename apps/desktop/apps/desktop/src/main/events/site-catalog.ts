@@ -6,8 +6,14 @@ import { z } from 'zod'
  *
  * It is **data**, loaded from `packs/site-catalog.json` at runtime, and deliberately not
  * TypeScript: non-negotiable 1 keeps site names out of kernel code, and the same rule is why
- * this file is the only place a domain appears. Unknown hosts classify as `default`
- * (`other`), which no rule acts on — an unrecognised site is not a guess, it is an absence.
+ * this file is the only place a domain appears.
+ *
+ * **This list is the whole of what the build watches.** An unlisted host is ignored outright:
+ * `watched` comes back false and `site-tracker` drops the tick before it earns a page, a record
+ * or a place in the agent's context. An unrecognised site is not a guess to classify, it is an
+ * absence — and policing a site nobody opted into would be enforcement without a commitment
+ * (non-negotiable 5). All `default` decides is what an unlisted host is *called* on its way
+ * past; no intensity read from it can reach a rule.
  */
 export const siteIntensitySchema = z.enum(['low', 'normal', 'high'])
 export type SiteIntensity = z.infer<typeof siteIntensitySchema>

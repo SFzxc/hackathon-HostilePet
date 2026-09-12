@@ -17,7 +17,7 @@
 | Browser sensor | **Chrome MV3 + WXT + TypeScript** | Supported site adapters and leased browser surfaces |
 | Storage | **Kernel-owned atomic JSON snapshot** | Existing persistence decision; SQLite deferred, ADR 0003 |
 | Contracts | **Shared Zod schemas + TypeScript types** | Runtime validation and cross-boundary fixtures in `packages/contracts` |
-| Secrets | **macOS Keychain** | Main/core-only access; trusted extension storage exception for pairing token only |
+| Secrets | **macOS Keychain**, with the model key also readable from the git-ignored `.env` (ADR 0010) | Main/core-only access either way; trusted extension storage exception for pairing token only |
 | Tests | **Vitest** | Policy, price parsing, tone and boundary checks |
 | Workspace | **pnpm workspaces** | Shared packages, pinned build-time Node and dependencies |
 
@@ -32,7 +32,7 @@ Node orchestrates model requests and tools; it does not imply local model infere
   - Transparent, draggable, always-on-top pet; tray-only operation; no unsolicited focus; Spaces/fullscreen; Retina and display unplug behavior.
   - Sandboxed preload, IPC sender/payload validation and renderer isolation.
   - Offline Live2D model load and screen compositing with the selected Pixi/wrapper versions.
-  - Keychain integration in the packaged app. Do not substitute a plaintext or app-state secret store.
+  - Keychain integration in the packaged app, and the startup `.env` read in the same build (ADR 0010). The model key may come from either; the bridge token must not be moved to a plaintext or app-state secret store.
   - Snapshot behavior on APFS and failed writes; extension reconnect and worker restart.
   - Idle CPU/memory, animation cost and main-process responsiveness during model calls.
 - Review Cubism Core and sample-art redistribution terms before public distribution.

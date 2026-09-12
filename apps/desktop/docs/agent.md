@@ -6,7 +6,7 @@
 
 The agent runs as TypeScript in the privileged Node.js core of the Electron app (ADR 0004), initially in main with asynchronous provider calls. It does not run in the renderer. Node coordinates requests and local tools; inference runs at the configured provider unless a local provider is explicitly selected.
 
-The library is selected: LangGraph JS on `@langchain/core`, pinned in `packages/agent` (ADR 0006). The package now implements the turn itself — context assembly, provider adapter, deterministic validation, one retry, fallback — and still has **no graph and no tools**, because §4 requires a settled tool-dispatch protocol first. A turn today is one bounded provider call; wiring a graph library around a straight line would add a dependency without adding a decision, and the pinned dependency stays declared so the choice is not relitigated. A graph/checkpoint library must not become a second policy store or bypass approval, grants, the four-call budget or application-owned action receipts. Any future utility-process isolation keeps side-effect authorization and policy writes in the kernel.
+The library is selected: LangGraph JS on `@langchain/core`, pinned in `packages/agent` (ADR 0006). The package now implements the turn itself — context assembly, provider adapter, deterministic validation, one retry, and silence when neither attempt produced a usable line (ADR 0011) — and still has **no graph and no tools**, because §4 requires a settled tool-dispatch protocol first. A turn today is one bounded provider call; wiring a graph library around a straight line would add a dependency without adding a decision, and the pinned dependency stays declared so the choice is not relitigated. A graph/checkpoint library must not become a second policy store or bypass approval, grants, the four-call budget or application-owned action receipts. Any future utility-process isolation keeps side-effect authorization and policy writes in the kernel.
 
 ## 1. Loop
 
@@ -30,7 +30,7 @@ Triggers are explicit and few:
 Until a rule engine exists, the desktop's turn runner owns the cadence and the ladder:
 
 - **Cadence.** One turn every 30–60 s (default 45 s), never overlapping: a turn in flight blocks the next, and a manual "ask now" may not run within 30 s of the previous turn. A turn is **skipped** when nothing new was observed since the last one — calling a model about silence is how a companion becomes noise — and skipped turns are counted, not logged as speech.
-- **Level.** `watchSeconds · concernedSeconds · hostileSeconds` and `decayAfterSeconds` live in `packs/site-catalog.json`, not in kernel code (non-negotiable 1). The level rises with qualifying time on one site and with the number of pages open, and drops one rung after `decayAfterSeconds` without qualifying activity, so a return to work is visible instead of the pet staying angry at a finished session. Time is credited per page and reported as the **maximum** over a site's pages, never the sum: two tabs of one site are not two afternoons.
+- **Level.** `watchSeconds · concernedSeconds · hostileSeconds` and `decayAfterSeconds` live in `packs/site-catalog.json`, not in kernel code (non-negotiable 1). That catalog is also the whole of what counts: a tick from an unlisted host is dropped before it earns any time, so an unrecognised site is invisible to the level rather than a distraction inside it. The level rises with qualifying time on one site and with the number of pages open, and drops one rung after `decayAfterSeconds` without qualifying activity, so a return to work is visible instead of the pet staying angry at a finished session. Time is credited per page and reported as the **maximum** over a site's pages, never the sum: two tabs of one site are not two afternoons.
 - **Silence at level 0.** Nothing worth a line means `mood_only` or `none`, and the pet stays quiet. A level-0 turn must not become a remark.
 - **The level is a ceiling, not a suggestion.** The mood and the action the model may choose are clamped to the band that level allows, and the intensity it is asked for follows from the same band (`docs/tone.md` §3). A model cannot raise its own level, and the clamp is recorded with the turn when it bites.
 
@@ -86,8 +86,8 @@ slice, and the contract is the smallest thing that can drive it:
 ```
 
 - `source` (`model` | `fallback`), `provider` and `promptVersion` are stamped by the runtime after
-  generation. A model never declares its own provenance, and a curated line never claims to be
-  generated (`docs/tone.md` §6).
+  generation. A model never declares its own provenance, and a turn with no line — nothing was
+  generated at all — is stamped `fallback` (`docs/tone.md` §7).
 - `action` describes the surface, not a side effect: `say_bubble` shows the line, `mood_only`
   changes the face, `notify` adds one desktop notification, `none` does nothing at all. There is
   no tool dispatch behind any of them yet, which is why nothing in this slice may claim that
@@ -139,13 +139,13 @@ The model MUST NOT modify commitments, budgets, API keys, capabilities or extens
 ## 6. Budgets and failure
 
 - ≤ 4 tool calls per interaction; hard wall-clock timeout per turn.
-- One retry on validator rejection, with the rejection reason appended. Then fall back (`docs/tone.md` §6).
-- Model failure is a normal path, not an incident: the rule engine stays authoritative, the intervention still renders, the fallback line is used, and the activity log records that the model was unavailable.
+- One retry on validator rejection, with the rejection reason appended. Then the turn ends with no line (`docs/tone.md` §6).
+- Model failure is a normal path, not an incident: the rule engine stays authoritative, the intervention still renders, no line is shown, and the activity log records that the model was unavailable.
 - No retry storms: a failed provider is marked offline until the next successful health check.
 
 ## 7. Model selection
 
-**Pinned for this build: `gpt-5.6-luna`** (`DEFAULT_MODEL` in `packages/agent/src/provider.ts`, ADR 0006 decision 5), overridable with `HOSTILEPET_MODEL`. It was picked without the smoke test below — no key was available when the provider was wired — so the first real turn is also the test: one turn, one JSON object, one line. The loop does not depend on the answer: a model that cannot hold the contract fails validation, gets one retry, and then falls back to the curated lines for the same level. Latency target for a desktop nudge stays a line on screen in under ~2 seconds.
+**Pinned for this build: `gpt-5.6-luna`** (`DEFAULT_MODEL` in `packages/agent/src/provider.ts`, ADR 0006 decision 5), overridable with `HOSTILEPET_MODEL`. It was picked without the smoke test below — no key was available when the provider was wired — so the first real turn is also the test: one turn, one JSON object, one line. The loop does not depend on the answer: a model that cannot hold the contract fails validation, gets one retry, and then the turn has no line at all — nothing is substituted for it (ADR 0011). Latency target for a desktop nudge stays a line on screen in under ~2 seconds.
 
 Model and endpoint live in configuration. Never hardcode a model name that will go stale. Log provider errors with codes, never with credentials.
 

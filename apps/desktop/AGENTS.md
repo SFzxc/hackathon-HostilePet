@@ -1,6 +1,6 @@
 # HostilePet — Agent Entry Point
 
-> **Status:** desktop scaffold, the extension bridge, the macOS Focus sensor, and the event → agent → pet loop implemented. Tray, placeholder pet, settings, shell IPC, the loopback WebSocket transport (`packages/contracts` + `apps/desktop/src/main/bridge/`), the in-process Focus sensor (`src/main/focus/`), the kernel handler with site accrual and a capped event log (`src/main/events/`), the turn runner and presenter (`src/main/agent/`, `src/main/pet/`), a curated provider and a real OpenAI provider behind `HOSTILEPET_PROVIDER=openai` (`packages/agent`), and a fake-kernel CLI exist; the curated lines are the default and are what the demo runs, the default handler is real but the mock remains behind `HOSTILEPET_HANDLER=mock`, and rule packs, a pack runtime, a persisted `state.json`, the extension itself and Live2D are not implemented.
+> **Status:** desktop scaffold, the extension bridge, the macOS Focus sensor, and the event → agent → pet loop implemented. Tray, placeholder pet, settings, shell IPC, the loopback WebSocket transport (`packages/contracts` + `apps/desktop/src/main/bridge/`), the in-process Focus sensor (`src/main/focus/`), the kernel handler with site accrual and a capped event log (`src/main/events/`), the turn runner and presenter (`src/main/agent/`, `src/main/pet/`), a provider that has no words and a real OpenAI provider behind `HOSTILEPET_PROVIDER=openai` (`packages/agent`), and a fake-kernel CLI exist; the model owns every line the pet says, so a run without one shows a face and no words and Settings names why (ADR 0011), the default handler is real but the mock remains behind `HOSTILEPET_HANDLER=mock`, and rule packs, a pack runtime, a persisted `state.json`, the extension itself and Live2D are not implemented.
 > **This file is a router, not the spec.** It says what the project is, what must never break, and which document to read for the task in front of you. Load only what you need.
 > **Normative keywords:** MUST / MUST NOT / SHOULD / MAY per RFC 2119.
 > **Mode: hackathon, happy case only.** Optimise for the one path the demo walks, end to end. Do not write or expand tests, and do not write spec documents for work in progress; a red test that describes a state the demo never reaches is left red. Fix only what blocks the happy path. This narrows *scope*, never *evidence*: the happy path must still be produced by the real sensor, and a state that could not be read still says so.
@@ -52,7 +52,7 @@ The floor that applies to every file, every commit, every prompt. If a task seem
 5. **Only the user's own commitments are enforced.** No commitment, no intervention.
 6. **Never fabricate.** No invented balances, totals, counts, or completed actions — in code or in generated lines.
 7. **No cruelty.** No person-targeted mockery, no moralizing, no medical or neurological claims.
-8. **Secrets live in Keychain** — never in the state file, logs, the renderer, the extension bundle, or the repo. The bridge token has one accepted exception: its extension-side copy lives in trusted-context-only Chrome local storage (ADR 0001). This exception never applies to the model API key.
+8. **Secrets never reach the state file, the logs, the renderer, the extension bundle, or the repo.** The model key is read from `HOSTILEPET_OPENAI_API_KEY` in the git-ignored `.env` or, failing that, from the login Keychain (ADR 0010). Only the privileged core reads it either way, it is handed to one call, and it is never persisted or logged. The bridge token keeps the Keychain as its store, with one accepted exception: its extension-side copy lives in trusted-context-only Chrome local storage (ADR 0001). That exception never applies to the model API key, and `.env` does not extend to the bridge token.
 9. **Raw page content never leaves the machine.** Only sanitized, minimal signals reach the model.
 10. **A mock, fixture or animation never counts as evidence** that a real sensor, tool or pack works.
 
@@ -62,7 +62,7 @@ Blocking or shaping work. Do not silently choose a default.
 
 | # | Decision | Status |
 | --- | --- | --- |
-| 1 | Model provider and model ID (after smoke test) | **decided** — OpenAI `gpt-5.6-luna`, behind `HOSTILEPET_PROVIDER=openai`, key in Keychain; smoke test still outstanding → `docs/adr/0006-agent-library.md` |
+| 1 | Model provider and model ID (after smoke test) | **decided** — OpenAI `gpt-5.6-luna`, behind `HOSTILEPET_PROVIDER=openai`, key from `.env` or the Keychain; smoke test still outstanding → `docs/adr/0006-agent-library.md`, `docs/adr/0010-api-key-from-env.md` |
 | 2 | Real shopping site for the second adapter | open |
 | 3 | Character pick — 3 screen-face proposals in `docs/character-concepts.md` | open |
 | 4 | Whether grayscale ships in the build or behind a flag | open |
@@ -88,4 +88,4 @@ Blocking or shaping work. Do not silently choose a default.
 
 ## Status
 
-Desktop scaffold, the bridge transport, the first real sensor, and the first behaviour loop: events land, the log grows, and the pet reacts on its own slow clock with one line and one action. The Focus sensor needs Full Disk Access before it can read anything and reports `known: false` until then; the agent's provider is curated lines by default and the model when `HOSTILEPET_PROVIDER=openai` finds a Keychain key and the persona artifact, and the UI names whichever ran; sequence and gates: `docs/engineering.md`. What must exist before the demo: `docs/hackathon.md`.
+Desktop scaffold, the bridge transport, the first real sensor, and the first behaviour loop: events land, the log grows, and the pet reacts on its own slow clock with one line and one action. The Focus sensor needs Full Disk Access before it can read anything and reports `known: false` until then; the agent's provider is the model when `HOSTILEPET_PROVIDER=openai` finds a key in `.env` or the Keychain and the persona artifact, and the UI names which source the key came from. Nothing else writes the pet's lines: with no model running the pet changes face and says nothing at all (ADR 0011). Sequence and gates: `docs/engineering.md`. What must exist before the demo: `docs/hackathon.md`.

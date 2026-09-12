@@ -20,15 +20,17 @@ export type PetLine = {
   at: number
   /** Shown next to the line so a stand-in is never mistaken for generated copy. */
   badge: string | null
+  /** The site this line was about, or null when it was not about any one site. */
+  site: string | null
 }
 
 export type ApplyResult = { result: string; detail: string | null }
 
 export interface Presenter {
-  present(outcome: AgentOutcome, level: number): ApplyResult
+  present(outcome: AgentOutcome, level: number, site?: string | null): ApplyResult
   current(at?: number): PetLine | null
   /** What the pet wears because of the agent, or null when the agent has nothing to say. */
-  expression(at?: number): PetExpression | null
+  expression(at?: number, present?: ReadonlySet<string>): PetExpression | null
   dismiss(): void
 }
 
@@ -58,7 +60,7 @@ export function createPresenter(options: { lineTtlMs?: number; onChange?: () => 
   }
 
   return {
-    present(outcome, level) {
+    present(outcome, level, site = null) {
       // `none` is a decision to do nothing at all: no face change, no line, no notification.
       if (outcome.action === 'none') return { result: 'none', detail: null }
       const say = outcome.say.trim().length > 0 ? outcome.say.trim() : null
@@ -69,7 +71,8 @@ export function createPresenter(options: { lineTtlMs?: number; onChange?: () => 
         source: outcome.source,
         level,
         at: Date.now(),
-        badge: outcome.source === 'fallback' ? 'fallback' : null
+        badge: outcome.source === 'fallback' ? 'fallback' : null,
+        site
       }
       accept(next)
       if (outcome.action !== 'notify') return { result: say ? 'bubble' : 'mood', detail: null }
@@ -87,9 +90,20 @@ export function createPresenter(options: { lineTtlMs?: number; onChange?: () => 
       if (!line) return null
       return at - line.at > lineTtlMs ? null : line
     },
-    expression(at = Date.now()) {
+    /**
+     * The face the agent earned, for as long as it still means something.
+     *
+     * A line about a site stops being true about the room the moment the person leaves that
+     * site: the pet would be pulling a face at a tab nobody is looking at, for the rest of the
+     * TTL. Dropping it here rather than shortening the TTL keeps the line's own lifetime intact
+     * for the bubble, and a line that was about no particular site keeps its full TTL because
+     * nothing about it has stopped being true.
+     */
+    expression(at = Date.now(), present) {
       const current = this.current(at)
-      return current ? current.mood : null
+      if (!current) return null
+      if (current.site !== null && present && !present.has(current.site)) return null
+      return current.mood
     },
     dismiss() {
       if (timer) clearTimeout(timer)

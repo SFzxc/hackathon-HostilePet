@@ -28,20 +28,35 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron ../../packages/agent/scripts
 
 `pnpm package` creates an unsigned local macOS application under `apps/desktop/release/`. It is not a signed or notarized public release.
 
-The UI and tray state what is actually happening: the handler behind the socket (`kernel` or `mock`), the agent's provider and whether it is a model, the event-log path and its last records, and the escalation level. By default the agent runs the **curated** provider: it says so in the UI and stamps every line `source: fallback`. The OpenAI provider exists behind a flag (below), but it is off unless you select it and store a key. There is still no rule enforcement, pack runtime or Live2D model, and no rule pack has been written. The geometric placeholder is original CSS artwork, not production character art. No credentials are needed for the default path.
+The UI and tray state what is actually happening: the handler behind the socket (`kernel` or `mock`), the agent's provider and whether it is a model, the event-log path and its last records, and the escalation level. By default there is **no model and no copy**: the pet changes face and says nothing, and the UI names the provider that produced no line (ADR 0011). The OpenAI provider is behind a flag (below), and until you select it and store a key the pet has no words at all. There is still no rule enforcement, pack runtime or Live2D model, and no rule pack has been written. The geometric placeholder is original CSS artwork, not production character art. The default path needs no credentials, because it makes no model request.
 
-`packages/agent` holds the pinned agent library (ADR 0006) plus the implemented turn: context assembly, provider adapter, deterministic validator, one retry, fallback. It has no graph and no tools, because the tool-dispatch protocol in `docs/agent.md` §4 is still open.
+`packages/agent` holds the pinned agent library (ADR 0006) plus the implemented turn: context assembly, provider adapter, deterministic validator, one retry, and silence when neither attempt produced a usable line. It has no graph and no tools, because the tool-dispatch protocol in `docs/agent.md` §4 is still open.
 
 ## The real model, behind a flag
 
-The curated provider is the default because the demo must not depend on a network. To let the model write the line instead:
+The pet only speaks when a model writes the line, so this is the flag that gives it a voice. Put the key in `.env` — the same git-ignored file that already holds `HOSTILEPET_PROVIDER`:
 
 ```sh
-security add-generic-password -s hostilepet.openai -a "$USER" -w   # stores the key in the login Keychain
-HOSTILEPET_PROVIDER=openai pnpm dev
+# apps/desktop/.env
+HOSTILEPET_OPENAI_API_KEY=sk-...
+HOSTILEPET_PROVIDER=openai
 ```
 
-The key is read from Keychain at startup and handed to one call per turn; it is never written to `state.json`, never logged, and never sent to the renderer. `HOSTILEPET_MODEL` overrides the pinned `gpt-5.6-luna`, and `HOSTILEPET_OPENAI_BASE_URL` overrides the endpoint. If the key is missing, the persona artifact cannot be read, or the call fails — no network, a 401, a timeout, prose instead of JSON — the turn falls back to a curated line for the same level and the UI says which one ran. What is sent is the persona artifact plus the redacted context package: host, category, seconds, counts, clock. Never page content.
+Or keep it in the login Keychain instead, which stays the fallback when no variable is set:
+
+```sh
+security add-generic-password -s hostilepet.openai -a "$USER" -w
+```
+
+Either way, restart the app after the change — `.env` is read once, at startup:
+
+```sh
+pnpm dev
+```
+
+Whichever source is used, the key is handed to one call per turn and is never written to `state.json`, never logged, and never sent to the renderer; Settings says whether it came from `.env` or the Keychain. `HOSTILEPET_MODEL` overrides the pinned `gpt-5.6-luna`, and `HOSTILEPET_OPENAI_BASE_URL` overrides the endpoint. If the key is missing, the persona artifact cannot be read, or the call fails — no network, a 401, a timeout, prose instead of JSON — the turn has no line at all: the pet keeps its face and stays quiet, and the UI names the provider that produced nothing (ADR 0011). What is sent is the persona artifact plus the redacted context package: host, category, seconds, counts, clock. Never page content.
+
+A key in `.env` also reaches a packaged build: the app reads the file itself at startup, looking beside `HostilePet.app` and at `Contents/Resources/.env`, because an app launched from Finder inherits no environment at all (`docs/adr/0010-api-key-from-env.md`).
 
 ## The demo loop, without a browser extension
 
@@ -54,7 +69,7 @@ pnpm simulate --site youtube.com
 pnpm simulate --site tiktok.com --tab-seconds 30   # 30s of time per second, faster than real time
 ```
 
-Ticks are accumulated and written to `userData/events.json`; the agent reads the window roughly every 45 s and the pet reacts, growing more forceful as the level rises (30 s watching, 90 s concerned, 180 s hostile — the numbers live in `packs/site-catalog.json`). `HOSTILEPET_AGENT_INTERVAL_MS` tunes the cadence between 30 and 60 s, `HOSTILEPET_PROVIDER=openai` swaps the curated lines for the model, and `HOSTILEPET_HANDLER=mock` restores the protocol-only stub.
+Ticks are accumulated and written to `userData/events.json`; the agent reads the window roughly every 45 s and the pet reacts, growing more forceful as the level rises (30 s watching, 90 s concerned, 180 s hostile — the numbers live in `packs/site-catalog.json`). `HOSTILEPET_AGENT_INTERVAL_MS` tunes the cadence between 30 and 60 s, `HOSTILEPET_PROVIDER=openai` is what gives the pet a voice at all — there is no copy to fall back on, so a run without it is silent (ADR 0011) — and `HOSTILEPET_HANDLER=mock` restores the protocol-only stub.
 
 The simulator is a stand-in, not a browser sensor: it proves the chain end to end and nothing about Chrome. The event log records what it sent, and Settings prints those records verbatim.
 

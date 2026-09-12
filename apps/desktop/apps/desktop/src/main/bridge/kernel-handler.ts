@@ -12,9 +12,10 @@ import type { BridgeHandler, HandlerContext } from './types'
  * 1. **Accumulate** qualifying time per domain (`site-tracker`), which is deterministic.
  * 2. **Log** what was observed, redacted, into the event log.
  *
- * It does **not** call the model. Turns are requested by the turn runner on a 30–60 s cadence,
- * from the accumulated picture — asking a model about every tick is how a companion becomes a
- * metronome (`docs/agent.md` §1 forbids triggering the agent on a scroll or a timer tick).
+ * It does **not** call the model. It reports that a record was written, and the turn runner
+ * alone decides when that becomes a turn — asking a model about every tick is how a companion
+ * becomes a metronome (`docs/agent.md` §1 forbids triggering the agent on a scroll or a timer
+ * tick).
  *
  * When no site catalog could be loaded there is no tracker and no classification, so signals are
  * dropped with a reason instead of being guessed at: an unclassifiable host is an absence, not
@@ -25,7 +26,28 @@ function isSessionTick(payload: SignalPayload): payload is { schema: 'signal.ses
   return payload.schema === 'signal.session.tick@1'
 }
 
-export function createKernelHandler(options: { catalog: SiteCatalog | null; eventLog: EventLog }): {
+export function createKernelHandler(options: {
+  catalog: SiteCatalog | null
+  eventLog: EventLog
+  /**
+   * Called after an observation reaches the log, and only then — it fires on what was recorded,
+   * not on every message the bridge received. The handler stays domain-agnostic: it reports
+   * "a record was written", and what that means for the agent is the shell's business.
+   */
+  onRecorded?: () => void
+  /**
+   * How long one site waits between two `site.observed` records. The tracker accrues every tick
+   * regardless — this only bounds how often that accrual becomes a log line, and so how often
+   * the agent is nudged. The browser now ticks once a second, which makes this the first of the
+   * three slower clocks; without it a fast transport would write a log line per second per site
+   * and turn a resolution improvement into a flood.
+   */
+  observeThrottleMs?: number
+  /** Handed to the tracker unchanged: how long a silent page still counts as being looked at. */
+  presenceStaleMs?: number
+  /** Handed to the tracker unchanged: how long a silent page keeps its accrued time. */
+  pageStaleMs?: number
+}): {
   handler: BridgeHandler
   tracker: SiteTracker | null
 } {
@@ -45,6 +67,7 @@ export function createKernelHandler(options: { catalog: SiteCatalog | null; even
         documents: observation.documents,
         reason: 'disconnect'
       })
+      options.onRecorded?.()
       return
     }
     eventLog.append({
@@ -59,9 +82,16 @@ export function createKernelHandler(options: { catalog: SiteCatalog | null; even
       // this observation in the log (`docs/hackathon.md` §4).
       demoMode: demoMode && observation.qualifyingMs >= catalog.escalation.watchSeconds * 1000
     })
+    options.onRecorded?.()
   }
 
-  const tracker = catalog ? createSiteTracker(catalog, record) : null
+  const tracker = catalog
+    ? createSiteTracker(catalog, record, {
+      observeThrottleMs: options.observeThrottleMs,
+      presenceStaleMs: options.presenceStaleMs,
+      pageStaleMs: options.pageStaleMs
+    })
+    : null
 
   const handler: BridgeHandler = {
     id: 'kernel',

@@ -1,9 +1,13 @@
 import { execFileSync } from 'node:child_process'
 
 /**
- * The one secret this build has, and the only place it is read from: the login Keychain
- * (non-negotiable 8). It is never written to `state.json`, never logged, never sent to the
- * renderer — `readKey` returns it to the caller and the caller hands it straight to the provider.
+ * The login Keychain's copy of the model key — the fallback, now that `HOSTILEPET_OPENAI_API_KEY`
+ * is read from `.env` first (`api-key.ts`, `docs/adr/0010-api-key-from-env.md`). It is kept
+ * because a machine that already stores the key there should not need a `.env` to keep working,
+ * and this module stays the only code in the app that shells out to `security`.
+ *
+ * The value is never written to `state.json`, never logged, never sent to the renderer —
+ * `readOpenAiKey` returns it to the caller and the caller hands it straight to the provider.
  *
  * Store one with:
  *   security add-generic-password -s hostilepet.openai -a "$USER" -w
