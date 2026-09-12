@@ -9,6 +9,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "package": "pnpm --filter @hostile-pet/desktop package",
+    "install:mac": "bash scripts/install-app.sh",
     "smoke": "pnpm --filter @hostile-pet/desktop smoke"
   }
 }

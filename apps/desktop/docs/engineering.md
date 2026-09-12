@@ -30,7 +30,7 @@ apps/
     src/preload/            # Narrow contextBridge API; no raw IPC exposure
     src/renderer/           # React: pet UI, onboarding, chat, pack manager, activity log
     src/shared/             # Schemas shared across the IPC boundary
-    scripts/                # focus-state.cjs (workspace) · apps/desktop/scripts/: smoke, bridge-handshake, simulate-site
+    scripts/                # focus-state.cjs, install-app.sh (workspace) · apps/desktop/scripts/: smoke, bridge-handshake, simulate-site
   extension/                # Browser sensor transport (MV3)
     entrypoints/
     src/adapters/           # YouTube Shorts, demo shop, verified real shop

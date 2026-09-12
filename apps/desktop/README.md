@@ -16,6 +16,7 @@ pnpm typecheck
 pnpm test
 pnpm build
 pnpm package
+pnpm install:mac
 pnpm smoke
 ```
 
@@ -26,7 +27,19 @@ cd apps/desktop
 ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron ../../packages/agent/scripts/electron-runtime-check.cjs
 ```
 
-`pnpm package` creates an unsigned local macOS application under `apps/desktop/release/`. It is not a signed or notarized public release.
+`pnpm package` creates an unsigned local macOS application at `apps/desktop/apps/desktop/release/mac-arm64/HostilePet.app`. It is not a signed or notarized public release.
+
+`pnpm install:mac` (`scripts/install-app.sh`) builds that bundle, quits a running copy, copies it into `/Applications` with `ditto`, and drops the model key where the packaged app will find it:
+
+```sh
+pnpm install:mac                     # build + install to /Applications, .env bundled into the app
+pnpm install:mac --env beside        # key at /Applications/.env instead — editable without a rebuild
+pnpm install:mac --no-build          # install the bundle already in release/
+pnpm install:mac --open              # launch when done
+pnpm install:mac --target ~/Desktop  # install somewhere other than /Applications
+```
+
+`--env` decides which of the three `.env` candidates the app reads at startup (`src/main/env-file.ts`, ADR 0010): `bundled` writes `Contents/Resources/.env` and then **re-signs the bundle ad-hoc**, because a file added after electron-builder signed it breaks the resource seal (`codesign --verify` → “a sealed resource is missing or invalid”); `beside` writes `/Applications/.env`, which needs no re-sign and is read first, so the key can change without a rebuild; `keychain` and `none` copy nothing and leave the app on the login Keychain or on no model at all. A bundled key is a secret inside a bundle: install it locally, do not hand the `.app` to anyone.
 
 The UI and tray state what is actually happening: the handler behind the socket (`kernel` or `mock`), the agent's provider and whether it is a model, the event-log path and its last records, and the escalation level. By default there is **no model and no copy**: the pet changes face and says nothing, and the UI names the provider that produced no line (ADR 0011). The OpenAI provider is behind a flag (below), and until you select it and store a key the pet has no words at all. There is still no rule enforcement, pack runtime or Live2D model, and no rule pack has been written. The geometric placeholder is original CSS artwork, not production character art. The default path needs no credentials, because it makes no model request.
 
