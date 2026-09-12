@@ -33,11 +33,16 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron ../../packages/agent/scripts
 
 ```sh
 pnpm install:mac                     # build + install to /Applications, .env bundled into the app
+pnpm install:mac --key openai        # paste the model key first, then build and install
+pnpm install:mac --key all           # paste the model key and the ElevenLabs voice key
+pnpm install:mac --keys-only --key openai   # write the key for `pnpm dev`, no build and no install
 pnpm install:mac --env beside        # key at /Applications/.env instead — editable without a rebuild
 pnpm install:mac --no-build          # install the bundle already in release/
 pnpm install:mac --open              # launch when done
 pnpm install:mac --target ~/Desktop  # install somewhere other than /Applications
 ```
+
+`--key` is how a key gets in without editing a file by hand. The value is typed at a prompt with echo off — never as an argument, because an argument lands in the shell history — then written to `apps/desktop/.env` (chmod 600) and never printed back: every message shows a masked prefix and a length, so two keys can be told apart without either reaching a log. Pasting the model key also sets `HOSTILEPET_PROVIDER=openai`, since a key alone selects nothing; `--key elevenlabs` stores `ELEVENLAB_API_KEY`, the voice key, which is documented in `.env.example` with `ELEVENLAB_VOICE_ID`. Pressing Enter at a prompt keeps what is already set, and piping works for automation (`printf '%s\n' "$KEY" | pnpm install:mac --key openai`). `--keys-only` stops after the write, which is what `pnpm dev` needs.
 
 `--env` decides which of the three `.env` candidates the app reads at startup (`src/main/env-file.ts`, ADR 0010): `bundled` writes `Contents/Resources/.env` and then **re-signs the bundle ad-hoc**, because a file added after electron-builder signed it breaks the resource seal (`codesign --verify` → “a sealed resource is missing or invalid”); `beside` writes `/Applications/.env`, which needs no re-sign and is read first, so the key can change without a rebuild; `keychain` and `none` copy nothing and leave the app on the login Keychain or on no model at all. A bundled key is a secret inside a bundle: install it locally, do not hand the `.app` to anyone.
 
