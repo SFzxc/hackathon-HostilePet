@@ -1,6 +1,6 @@
-# Unrot Pet
+# HostilePet
 
-Repository home for the Unrot Pet desktop application, browser extension,
+Repository home for the HostilePet desktop application, browser extension,
 local service, and go-to-market work.
 
 ## Structure
