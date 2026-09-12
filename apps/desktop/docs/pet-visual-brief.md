@@ -3,6 +3,7 @@
 > Non-normative for engine work. Art production lives here so it does not clutter `docs/engineering.md`.
 > The renderer is species-agnostic: nothing here may leak into policy logic, and swapping the character must not require a code change.
 > Renderer is decided: **Live2D via pixi.js** (`docs/adr/0002-character-renderer.md`). Concepts: `docs/character-concepts.md`. Image-generation prompts: `docs/character-prompts.md`.
+> Demo slice: the character actually shipped is a third-party codex-pet spritesheet, through the sprite-sheet fallback ADR 0002 already named (`docs/adr/0009-demo-character-spritesheet.md`). Everything below remains the plan for a character of our own.
 
 ## Concept
 

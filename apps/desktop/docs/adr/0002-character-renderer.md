@@ -5,6 +5,8 @@
 
 > Runtime update: ADR 0004 replaces the original Tauri host with Electron. Live2D remains accepted; model load, performance and screen compositing must be verified in Electron rather than inferred from Tauri prior art.
 
+> Demo update: the fallback renderer named below is what the demo slice actually ships, with a third-party codex-pet character. Live2D is still the accepted long-term format. See ADR 0009.
+
 ## Context
 
 A character pack needs a data format for "a portable character a user can swap". Two options are proven on this exact platform (Tauri 2 + webview):

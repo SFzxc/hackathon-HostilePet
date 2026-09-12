@@ -273,16 +273,23 @@ function togglePet(visible: boolean): void {
   log(visible ? 'show-pet' : 'hide-pet'); notify()
 }
 /**
- * The pet's window is big enough for whatever it is wearing: a bare creature, or a creature
- * with a bubble above it. A line that arrives while the window is still 160 px wide would be
- * clipped by the window's own edge, which reads as a bug rather than as a remark.
+ * The pet's window, in its two states: bare, and with a bubble above it. A line that arrives
+ * while the window is still sized for the bare character would be clipped by the window's own
+ * edge, which reads as a bug rather than as a remark.
+ *
+ * These are a pair with the renderer's `.sprite` size in `style.css`: the character is sized to
+ * fit the collapsed state with the window's padding to spare. Growing the character means growing
+ * both, plus the expanded height the smoke test asserts.
  */
+const PET_WINDOW = { width: 224, height: 258 }
+const PET_WINDOW_EXPANDED = { width: 320, height: 360 }
+/** Gap between the pet's window and the corner of the work area it parks in. */
+const PET_MARGIN = 30
 function refreshPet(): void {
   if (pet) {
     const line = presenter?.current() ?? null
     const expanded = preview !== 'idle' || line !== null
-    const width = expanded ? 280 : 160
-    const height = expanded ? 270 : 170
+    const { width, height } = expanded ? PET_WINDOW_EXPANDED : PET_WINDOW
     const bounds = pet.getBounds()
     if (bounds.width !== width || bounds.height !== height) {
       pet.setBounds(fitInWorkArea({ x: bounds.x + Math.round((bounds.width - width) / 2),
@@ -431,7 +438,8 @@ else {
         reportBridge({ event: 'bridge.failed', code: state.phase, detail: state.detail ?? 'no detail' })
       }
     }
-    pet = new BrowserWindow({ width: 160, height: 170, x: area.x + area.width - 190, y: area.y + area.height - 200,
+    pet = new BrowserWindow({ ...PET_WINDOW, x: area.x + area.width - PET_WINDOW.width - PET_MARGIN,
+      y: area.y + area.height - PET_WINDOW.height - PET_MARGIN,
       show: false, frame: false, transparent: true, resizable: false, hasShadow: false, alwaysOnTop: true,
       skipTaskbar: true, focusable: false,
       webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true, nodeIntegration: false } })
@@ -445,14 +453,38 @@ else {
     }
     screen.on('display-removed', recover)
     screen.on('display-metrics-changed', recover)
-    // Original geometric template icon, generated locally; no external art.
-    const pixels = Buffer.alloc(16 * 16 * 4)
-    for (let y = 3; y < 13; y++) for (let x = 2; x < 14; x++) {
-      const border = x === 2 || x === 13 || y === 3 || y === 12
-      const eye = y >= 6 && y <= 8 && (x === 5 || x === 10)
-      if (border || eye) pixels[(y * 16 + x) * 4 + 3] = 255
-    }
-    const icon = nativeImage.createFromBitmap(pixels, { width: 16, height: 16, scaleFactor: 1 })
+    // The pet's face in the menu bar, drawn here rather than loaded. A template mask: macOS
+    // paints it black or white to suit the bar, so it reads in both appearances, and it carries
+    // no art asset and no licence with it. Render at 2× and hand it over as a scaleFactor-2
+    // image, or a Retina bar gets a blurred upscale of a 16 px bitmap.
+    const face = [
+      '................',
+      '...#........#...',
+      '..###......###..',
+      '..####....####..',
+      '..#####..#####..',
+      '..############..',
+      '.##############.',
+      '.##..######..##.',
+      '.##..######..##.',
+      '.##############.',
+      '.######..######.',
+      '.#####....#####.',
+      '..############..',
+      '...##########...',
+      '....########....',
+      '................',
+    ]
+    const scale = 2
+    const edge = 16 * scale
+    const pixels = Buffer.alloc(edge * edge * 4)
+    face.forEach((row, y) => [...row].forEach((cell, x) => {
+      if (cell !== '#') return
+      for (let dy = 0; dy < scale; dy++) for (let dx = 0; dx < scale; dx++) {
+        pixels[(((y * scale + dy) * edge) + x * scale + dx) * 4 + 3] = 255
+      }
+    }))
+    const icon = nativeImage.createFromBitmap(pixels, { width: edge, height: edge, scaleFactor: scale })
     icon.setTemplateImage(true)
     tray = new Tray(icon); notify()
     // The agent runs on its own slow clock, over what the tracker accumulated. With no catalog
