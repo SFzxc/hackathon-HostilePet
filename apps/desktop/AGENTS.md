@@ -1,8 +1,9 @@
 # HostilePet — Agent Entry Point
 
-> **Status:** desktop scaffold and the extension bridge implemented. Tray, placeholder pet, settings, shell IPC, the loopback WebSocket transport (`packages/contracts` + `apps/desktop/src/main/bridge/`) and a fake-kernel CLI exist; the handler behind the bridge is a mock, and kernel, packs, the extension itself, agent and Live2D are not implemented.
+> **Status:** desktop scaffold, the extension bridge, the macOS Focus sensor, and the event → agent → pet loop implemented. Tray, placeholder pet, settings, shell IPC, the loopback WebSocket transport (`packages/contracts` + `apps/desktop/src/main/bridge/`), the in-process Focus sensor (`src/main/focus/`), the kernel handler with site accrual and a capped event log (`src/main/events/`), the turn runner and presenter (`src/main/agent/`, `src/main/pet/`), a fake provider (`packages/agent`) and a fake-kernel CLI exist; the provider is **curated lines, not a model**, the default handler is real but the mock remains behind `HOSTILEPET_HANDLER=mock`, and rule packs, a pack runtime, a persisted `state.json`, the extension itself and Live2D are not implemented.
 > **This file is a router, not the spec.** It says what the project is, what must never break, and which document to read for the task in front of you. Load only what you need.
 > **Normative keywords:** MUST / MUST NOT / SHOULD / MAY per RFC 2119.
+> **Mode: hackathon, happy case only.** Optimise for the one path the demo walks, end to end. Do not write or expand tests, and do not write spec documents for work in progress; a red test that describes a state the demo never reaches is left red. Fix only what blocks the happy path. This narrows *scope*, never *evidence*: the happy path must still be produced by the real sensor, and a state that could not be read still says so.
 
 ## What this is
 
@@ -65,7 +66,7 @@ Blocking or shaping work. Do not silently choose a default.
 | 2 | Real shopping site for the second adapter | open |
 | 3 | Character pick — 3 screen-face proposals in `docs/character-concepts.md` | open |
 | 4 | Whether grayscale ships in the build or behind a flag | open |
-| 5 | First non-browser sensor | deferred; no additional sensor ships in this build → `docs/vision.md` |
+| 5 | First non-browser sensor | **decided** — macOS Focus, read from the DoNotDisturb database → `docs/adr/0007-macos-focus-sensor.md` |
 | 6 | Pack distribution format for the next horizon | deferred → `docs/vision.md` |
 | 7 | Hackathon theme wording — how "reverse screen agent" is scored | open |
 | 8 | Character renderer format | **decided** — Live2D via pixi.js → `docs/adr/0002-character-renderer.md` |
@@ -87,4 +88,4 @@ Blocking or shaping work. Do not silently choose a default.
 
 ## Status
 
-Desktop scaffold plus the bridge transport. Sequence and gates: `docs/engineering.md`. What must exist before the demo: `docs/hackathon.md`.
+Desktop scaffold, the bridge transport, the first real sensor, and the first behaviour loop: events land, the log grows, and the pet reacts on its own slow clock with one line and one action. The Focus sensor needs Full Disk Access before it can read anything and reports `known: false` until then; the agent's provider is curated lines until a model is wired, and the UI says so; sequence and gates: `docs/engineering.md`. What must exist before the demo: `docs/hackathon.md`.

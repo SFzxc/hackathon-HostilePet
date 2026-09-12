@@ -23,6 +23,9 @@ importers:
         specifier: 4.6.2
         version: 4.6.2
     devDependencies:
+      '@hostile-pet/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
       '@hostile-pet/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

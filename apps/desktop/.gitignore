@@ -12,5 +12,3 @@ release/
 .hermes
 .pnpm-store
 skills-lock.json
-
-docs/

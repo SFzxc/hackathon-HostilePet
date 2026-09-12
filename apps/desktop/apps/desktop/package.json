@@ -12,6 +12,7 @@
     "test": "vitest run",
     "package": "pnpm build && electron-builder --mac --dir",
     "smoke": "pnpm build && electron scripts/smoke.cjs",
+    "simulate": "node scripts/simulate-site.cjs",
     "bridge:mock": "electron-vite build && node out/main/bridge-standalone.js"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "zod": "4.6.2"
   },
   "devDependencies": {
+    "@hostile-pet/agent": "workspace:*",
     "@hostile-pet/contracts": "workspace:*",
     "electron": "44.3.0",
     "electron-vite": "5.0.0",
@@ -44,6 +46,12 @@
       "out/**/*",
       "!out/main/bridge-standalone.js",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../packs",
+        "to": "packs"
+      }
     ],
     "mac": {
       "category": "public.app-category.productivity",

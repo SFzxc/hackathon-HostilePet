@@ -61,9 +61,9 @@ export interface MockHandler extends BridgeHandler {
 const MOCK_DEFAULTS = {
   triggerActiveMs: 15_000,
   leaseTtlMs: LEASE_DEFAULT_TTL_MS,
-  escapeLabel: 'Cho tôi qua',
-  copyText: 'Câu thoại tạm của bản giả lập — chưa nối vào bộ sinh lời thoại.',
-  locale: 'vi',
+  escapeLabel: 'Let me through',
+  copyText: 'Placeholder line from the mock handler — not wired to the line generator yet.',
+  locale: 'en',
   ruleId: 'mock.daily_budget'
 } as const
 

@@ -1,24 +1,28 @@
 /**
- * @hostile-pet/agent — provider adapter, context builder, tool runtime and output validator.
+ * `@hostile-pet/agent` — the line the pet says, and the one action it takes.
  *
- * Status: dependency boundary only (ADR 0006). LangGraph JS and `@langchain/core` are pinned and
- * verified to load on Electron's Node runtime; no graph, tool or prompt is implemented here yet.
+ * Shape of this slice: the kernel accumulates observed site time deterministically, the turn
+ * runner asks for a turn on a slow cadence, and this package turns a context package into
+ * **one message and one action** — generated, clamped to the escalation level the kernel
+ * chose, and validated against the deterministic floor before anything is shown.
  *
- * This module is deliberately empty. `docs/agent.md` §4 requires one settled tool-dispatch format,
- * result receipts, confirmation states and final-response protocol before the agent boundary is
- * implemented. Adopting a graph library does not settle that protocol, and this module must not
- * invent one implicitly.
+ * Invariants no implementation in this package may break (ADR 0006, `docs/agent.md`):
  *
- * Invariants that no implementation in this package may break:
+ * - No output here enables, widens, weakens or disables a rule. The model proposes; policy
+ *   clamps (`outcome.ts`) and the kernel decides the level.
+ * - A model never declares its own provenance: `source` is stamped by `run-turn.ts`.
+ * - Node-only. Never imported into the renderer or the extension bundle.
+ * - The API key is read from macOS Keychain by the privileged core, never from this package's
+ *   environment, arguments or persisted state.
  *
- * - No checkpoint store is authoritative. Commitments, counters, grants and leases belong to the
- *   kernel. A LangGraph checkpointer is at most a transcript cache and must never be read as
- *   policy truth (`docs/agent.md` §9).
- * - No framework path may enable, widen, weaken or disable a rule, or bypass user approval.
- * - This package is Node-only and must never be imported into the renderer or the extension
- *   bundle (`docs/engineering.md` §2).
- * - The model API key is read from macOS Keychain by the privileged core, never from this
- *   package's environment, arguments or persisted state.
+ * Still open (`docs/agent.md` §4): the tool-dispatch format. This slice has no tools, which is
+ * why the LangGraph runtime pinned in ADR 0006 is not wired yet — there is no graph to route.
+ * The turn is one bounded call, and introducing a graph library for a straight line would add
+ * a dependency without adding a decision.
  */
-
-export {}
+export * from './context'
+export * from './lines/vi'
+export * from './outcome'
+export * from './provider'
+export * from './run-turn'
+export * from './validate'

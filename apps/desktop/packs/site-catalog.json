@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "categories": {
+    "social": { "label": "mạng xã hội", "intensity": "high", "thresholdSeconds": 30 },
+    "shopping": { "label": "mua sắm", "intensity": "normal", "thresholdSeconds": 30 },
+    "work": { "label": "công việc", "intensity": "low", "thresholdSeconds": 0 }
+  },
+  "sites": {
+    "youtube.com": "social",
+    "tiktok.com": "social",
+    "facebook.com": "social",
+    "instagram.com": "social",
+    "x.com": "social",
+    "shopee.vn": "shopping",
+    "lazada.vn": "shopping",
+    "tiki.vn": "shopping",
+    "github.com": "work",
+    "notion.so": "work"
+  },
+  "default": "other",
+  "escalation": {
+    "watchSeconds": 30,
+    "concernedSeconds": 90,
+    "hostileSeconds": 180,
+    "decayAfterSeconds": 120
+  }
+}

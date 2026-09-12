@@ -1,27 +1,46 @@
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { DesktopAPI, DesktopCommand, DesktopStatus } from '../shared/desktop'
+import type { DesktopAPI, DesktopCommand, DesktopStatus, PetExpression } from '../shared/desktop'
 import './style.css'
 declare global { interface Window { desktop: DesktopAPI } }
-function Pet({ large = false, thinking = false }: { large?: boolean; thinking?: boolean }) {
-  return <div className={`creature ${large ? 'large' : ''} ${thinking ? 'thinking' : ''}`} aria-label="Geometric placeholder pet"><div className="ear left"/><div className="ear right"/><div className="face"><i/><i/></div><div className="feet"><b/><b/></div></div>
+/**
+ * The placeholder pet. Focus expressions are drawn here rather than in the shell so the
+ * renderer stays the only place that knows what a state looks like — and so replacing this
+ * placeholder with a character pack is a swap of one component.
+ *
+ * The z's are decoration and hidden from assistive technology; the expression itself is in
+ * the label, because "the pet is asleep" is information a screen reader user is owed.
+ */
+function Pet({ large = false, expression = 'idle' }: { large?: boolean; expression?: PetExpression }) {
+  return <div className={`creature ${large ? 'large' : ''} ${expression}`} aria-label={`Geometric placeholder pet, ${expression}`} role="img">
+    <div className="ear left"/><div className="ear right"/>
+    <div className="face"><i/><i/></div>
+    {expression === 'sleeping' && <span className="zzz" aria-hidden="true">z z z</span>}
+    {expression === 'intervene' && <span className="bang" aria-hidden="true">!</span>}
+    <div className="feet"><b/><b/></div>
+  </div>
 }
 /**
- * What the settings window may say about the bridge. It reports the transport, never
- * observation: the socket is real, the handler behind it is a mock, and no pack is
- * installed. Saying "connected" without a peer, or "monitoring" at all, would be the exact
- * overclaim `docs/hackathon.md` §4 forbids.
+ * What the settings window may say about Focus. It reports a reading or the reason there
+ * is none — the one thing it may not do is turn "could not read" into "no Focus mode",
+ * which is why the unread case has its own sentence rather than sharing the off one.
  */
-function bridgeText(bridge?: DesktopStatus['bridge']): string {
-  if (!bridge) return 'Reading bridge state…'
-  if (bridge.phase === 'listening') {
-    return bridge.peer
-      ? `Extension v${bridge.peer.extensionVersion} is attached with ${bridge.peer.sensors} sensor(s) declared. ${bridge.activeLeases} active lease(s).`
-      : `Waiting on ${bridge.host}:${bridge.port} for the browser extension. Nothing is being read yet.`
+function focusText(focus?: DesktopStatus['focus']): string {
+  if (!focus) return 'Checking…'
+  // Permission is the one cause a person can remove, so it gets the short sentence and the
+  // button. Every other cause keeps its raw reason: "unreadable" with no detail is not a
+  // diagnosis, and guessing "permission" would send the user to a switch that fixes nothing.
+  if (focus.reason === 'permission') return 'Permission needed.'
+  if (!focus.known) return focus.detail ? `Cannot read Focus mode: ${focus.detail}` : 'Cannot read Focus mode.'
+  if (focus.active === true) {
+    return `${focus.modeName ?? 'A Focus mode'} is on${focus.source === 'schedule' ? ', from its schedule' : ''}.`
   }
-  if (bridge.phase === 'port-in-use') return `Nothing is listening: port ${bridge.port} is already taken by another process.`
-  if (bridge.phase === 'failed') return bridge.detail ?? 'The bridge could not start.'
-  return bridge.detail ?? 'The bridge is stopped.'
+  return 'No Focus mode is on.'
+}
+function focusChip(focus?: DesktopStatus['focus']): string {
+  if (!focus) return 'CHECKING'
+  if (!focus.known) return focus.reason === 'permission' ? 'NO PERMISSION' : 'UNREADABLE'
+  return focus.active === true ? 'FOCUS ON' : 'FOCUS OFF'
 }
 function App() {
   const [status, setStatus] = useState<DesktopStatus>()
@@ -36,23 +55,34 @@ function App() {
     void window.desktop.command(value).catch(() => { setError('The desktop action could not complete. Please try again.') })
   }
   const preview = status?.preview ?? 'idle'
+  // The permission button appears for exactly one cause: macOS refusing the read. A sensor that
+  // was switched off, or a database that is missing or malformed, is unread too — sending the
+  // user to a permission switch for those would fix nothing.
+  const needsPermission = status?.focus.reason === 'permission'
+  // The pet's own line is the agent's. It always carries where it came from, and it can always
+  // be dismissed — that escape is required of any intervention (`docs/agent.md` §8). The manual
+  // preview owns the bubble while it is in use, because that control exists to show a face,
+  // not to argue with the agent.
+  const line = status?.petLine ?? null
   if (location.hash === '#pet') return <main className="pet-window">
+    {preview === 'idle' && line && <div className="speech agent" role="status">
+      <div className="speech-heading"><span>{line.source === 'model' ? 'HOSTILEPET · MODEL' : 'HOSTILEPET · CURATED LINE'}</span><button aria-label="Dismiss line" onClick={() => { command('dismiss-line') }}>×</button></div>
+      <p>{line.say}</p>
+    </div>}
     {preview !== 'idle' && <div className="speech" role="status">
       <div className="speech-heading"><span>VISUAL DEMO</span><button aria-label="Dismiss preview" onClick={() => { command('preview-idle') }}>×</button></div>
-      {preview === 'thinking' ? <p>Thinking<span className="thinking-dots" aria-hidden="true"><i/><i/><i/></span></p> : <p>Mình ở đây. Cứ làm việc của bạn đi.</p>}
+      {preview === 'thinking' ? <p>Thinking<span className="thinking-dots" aria-hidden="true"><i/><i/><i/></span></p> : <p>I&apos;m here. Get on with your work.</p>}
     </div>}
-    <div className="drag-pet" title="Drag to move · Settings in menu bar"><Pet thinking={preview === 'thinking'}/></div>
+    <div className="drag-pet" title="Drag to move · Settings in menu bar"><Pet expression={status?.petExpression ?? 'idle'}/></div>
     {error && <span role="alert">{error}</span>}
   </main>
-  return <main className="settings"><header className="titlebar"><span className="wordmark">hostilepet<span className="period">.</span></span><span className="build">DESKTOP / 0.1</span></header>
-    <section className="intro"><div><p className="eyebrow">A LITTLE PRESENCE. YOUR OWN RULES.</p><h1>Meet your<br/><em>desktop companion.</em></h1><p className="lede">A place on your desktop.<br/>Nothing watching in the background.</p></div><div className="portrait"><Pet large/><span>CHARACTER STUDY / PLACEHOLDER</span></div></section>
+  return <main className="settings"><header className="titlebar"><span className="wordmark">hostilepet<span className="period">.</span></span></header>
+    <section className="intro"><div><h1>Meet your<br/><em>desktop companion.</em></h1><p className="lede">A place on your desktop.<br/>It follows your Focus mode.</p></div><div className="portrait"><Pet large/></div></section>
     <section className="preferences" aria-label="Desktop settings"><div className="row"><div><h2>Keep me around</h2><p>Show the pet on your desktop. Drag it to move.</p></div><button className={`switch ${status?.petVisible ? 'on' : ''}`} role="switch" aria-checked={status?.petVisible ?? false} aria-label="Show desktop pet" disabled={!status} onClick={() => { command(status?.petVisible ? 'hide-pet' : 'show-pet') }}><span/></button></div>
-    <div className="row"><div><h2>Your space stays yours</h2><p>No sensors, commitments or model connections yet.</p></div><span className="status"><i/>NOT OBSERVING</span></div>
-    <div className="row"><div><h2>Browser bridge</h2><p>{bridgeText(status?.bridge)}</p></div><span className="status"><i/>MOCK HANDLER</span></div></section>
-    <section className="preview-controls" aria-label="Pet visual preview"><div><h2>Try an expression</h2><p>Visual demo only · no model request.</p></div><div className="preview-buttons">{(['idle', 'thinking', 'speaking'] as const).map(value => <button key={value} aria-pressed={preview === value} onClick={() => { command(`preview-${value}`) }}>{value === 'speaking' ? 'Text above' : value === 'thinking' ? 'Thinking' : 'Idle'}</button>)}</div></section>
-    <section className="coming"><span className="index">01 — FOUNDATION</span><p>The desktop shell is here. Browser packs, the agent and the Live2D character are still to come.</p></section>
+    <div className="row"><div><h2>Focus mode</h2><p>{focusText(status?.focus)}</p>{needsPermission && <p className="hint">macOS reads this permission when an app starts, so allow it, then quit and reopen.</p>}</div><div className="row-side"><span className="status"><i/>{focusChip(status?.focus)}</span>{needsPermission && <div className="row-actions"><button onClick={() => { command('open-focus-permission') }}>Grant permission…</button><button onClick={() => { command('relaunch') }}>Quit and reopen</button></div>}</div></div>
+    <div className="row"><div><h2>Your space stays yours</h2><p>No browser pack and no commitment. Host names, how long one was looked at, and whether a Focus mode is on are read. Page content is not, and nothing leaves this machine.</p></div><span className="status"><i/>NO PACK</span></div></section>
     {error && <p className="error" role="alert">{error}</p>}
-    <footer><span>Local shell. No account required.</span><button onClick={() => { command('quit') }}>Quit HostilePet ↗</button></footer>
+    <footer><button onClick={() => { command('quit') }}>Quit HostilePet ↗</button></footer>
   </main>
 }
 const root = document.getElementById('root')

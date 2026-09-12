@@ -1,6 +1,6 @@
 # HostilePet
 
-An Electron desktop companion for macOS. This repository currently implements the **desktop shell and the extension bridge**: a tray, draggable transparent placeholder pet, settings window, validated preload IPC, and a loopback WebSocket transport for a browser extension with a mock handler behind it.
+An Electron desktop companion for macOS. This repository currently implements the **desktop shell, the extension bridge and the event → agent → pet loop**: a tray, draggable transparent placeholder pet, settings window, validated preload IPC, a loopback WebSocket transport for a browser extension, a kernel handler that accrues observed site time, a capped event log, and an agent that reads that log every 30–60 s and answers with one line and one action.
 
 ## Run
 
@@ -28,9 +28,24 @@ ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron ../../packages/agent/scripts
 
 `pnpm package` creates an unsigned local macOS application under `apps/desktop/release/`. It is not a signed or notarized public release.
 
-The UI and tray explicitly say **not observing**. There is no model connection, rule enforcement, pack runtime, Keychain integration or Live2D model yet. The geometric placeholder is original CSS artwork, not production character art. No credentials are needed.
+The UI and tray state what is actually happening: the handler behind the socket (`kernel` or `mock`), the agent's provider and whether it is a model, the event-log path and its last records, and the escalation level. There is no rule enforcement, pack runtime, Keychain integration or Live2D model yet, and no model provider is wired: the agent runs the **curated** provider, which says so in the UI and stamps every line `source: fallback`. The geometric placeholder is original CSS artwork, not production character art. No credentials are needed.
 
-`packages/agent` holds the pinned agent library (ADR 0006) and nothing else: no graph, tool, prompt or provider package is implemented yet.
+`packages/agent` holds the pinned agent library (ADR 0006) plus the implemented turn: context assembly, provider adapter, deterministic validator, one retry, fallback. It has no graph and no tools, because the tool-dispatch protocol in `docs/agent.md` §4 is still open.
+
+## The demo loop, without a browser extension
+
+`scripts/simulate-site.cjs` is a fake sensor that speaks the real protocol. It says `hello`, declares `signal.hp.site.session.tick`, and streams ticks for one or more host names, so the whole chain can be demonstrated with no extension installed:
+
+```sh
+cd apps/desktop/apps/desktop
+pnpm dev                                            # in one terminal
+node ../../scripts/simulate-site.cjs --site youtube.com
+node ../../scripts/simulate-site.cjs --site tiktok.com --tab-seconds 30   # faster than real time
+```
+
+Ticks are accumulated and written to `userData/events.json`; the agent reads the window roughly every 45 s and the pet reacts, growing more forceful as the level rises (30 s watching, 90 s concerned, 180 s hostile — the numbers live in `packs/site-catalog.json`). `HOSTILEPET_AGENT_INTERVAL_MS` tunes the cadence between 30 and 60 s, and `HOSTILEPET_HANDLER=mock` restores the protocol-only stub.
+
+The simulator is a stand-in, not a browser sensor: it proves the chain end to end and nothing about Chrome. The event log records what it sent, and Settings prints those records verbatim.
 
 See `AGENTS.md` for document routing and `docs/engineering.md` for remaining implementation gates.
 

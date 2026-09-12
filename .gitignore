@@ -18,3 +18,4 @@ teams/demo-video/raw-footage/*
 !teams/demo-video/raw-footage/.gitkeep
 
 .hermes/
+.pnpm-store/

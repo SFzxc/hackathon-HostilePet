@@ -21,10 +21,11 @@ async function run() {
   await wait(300)
   const read = () => pet.webContents.executeJavaScript('window.desktop.status()')
   assert.equal((await read()).character, 'placeholder')
-  // The bridge is real transport; nothing behind it is. Both facts are asserted, because
-  // asserting only the first is how a mock starts reading as a working pack.
+  // The bridge transport is real and the kernel handler is real; what is missing is the pack
+  // that would give either of them something to observe. Both facts are asserted, because
+  // asserting only the first is how a missing pack starts reading as a working one.
   assert.equal((await read()).browser, 'no-pack-installed')
-  assert.equal((await read()).handler, 'mock')
+  assert.equal((await read()).handler, 'kernel')
   assert.equal((await read()).bridge.phase, 'listening',
     'expected the bridge listening on 54321; stop any other bridge:mock host holding that port first')
   assert.equal((await read()).bridge.peer, null)
@@ -48,7 +49,7 @@ async function run() {
   await writeFile(join(tmpdir(), 'hostilepet-thinking.png'), (await pet.webContents.capturePage()).toPNG())
   await pet.webContents.executeJavaScript("window.desktop.command('preview-speaking')")
   await wait(150)
-  assert.match(await pet.webContents.executeJavaScript('document.body.innerText'), /Mình ở đây/)
+  assert.match(await pet.webContents.executeJavaScript('document.body.innerText'), /Get on with your work/)
   await writeFile(join(tmpdir(), 'hostilepet-speaking.png'), (await pet.webContents.capturePage()).toPNG())
   await pet.webContents.executeJavaScript("document.querySelector('.speech-heading button').click()")
   await wait(150)
@@ -65,7 +66,10 @@ async function run() {
   assert.ok(settings)
   await wait(300)
   const copy = await settings.webContents.executeJavaScript('document.body.innerText')
-  assert.match(copy, /NOT OBSERVING/)
+  // The window may describe the transport and the log, never observation: no pack is installed,
+  // so nothing can be watched, and no sentence may imply otherwise.
+  assert.match(copy, /NO PACK/)
+  assert.doesNotMatch(copy, /observing|Observing/)
   assert.doesNotMatch(copy, /could not|Could not/)
   await writeFile(join(tmpdir(), 'hostilepet-settings.png'), (await settings.webContents.capturePage()).toPNG())
   const closed = once(settings, 'closed')
