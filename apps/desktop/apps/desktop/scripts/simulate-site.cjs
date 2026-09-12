@@ -30,24 +30,7 @@
 'use strict'
 
 const { randomUUID } = require('node:crypto')
-const path = require('node:path')
-
-/**
- * `ws` lives in the app's `node_modules`, not next to this script at the workspace root. Rather
- * than force a dependency into the root package, resolve it from the places it can be, and say
- * what to do when it is genuinely missing instead of dying on a stack trace.
- */
-function loadWebSocket() {
-  const roots = [__dirname, path.join(__dirname, '..', 'apps', 'desktop'), process.cwd()]
-  try {
-    return require(require.resolve('ws', { paths: roots }))
-  } catch {
-    console.error('Cannot find the `ws` package. Run `pnpm install` in apps/desktop first.')
-    process.exit(2)
-  }
-}
-
-const WebSocket = loadWebSocket()
+const WebSocket = require('ws')
 
 const PROTOCOL_VERSION = 1
 const PACK_ID = 'hp.site'

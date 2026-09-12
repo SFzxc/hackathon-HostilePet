@@ -33,7 +33,7 @@ Beats 0:50–1:30 need tools that do not exist yet. The loop underneath them doe
 
 | Time | Beat | What it proves |
 | --- | --- | --- |
-| 0:00–0:30 | `node scripts/simulate-site.cjs --site youtube.com` → ticks land, and Settings prints the records now in `events.json` | Sanitized signals, redacted persistence, a log a person can read |
+| 0:00–0:30 | `pnpm simulate --site youtube.com` → ticks land, and Settings prints the records now in `events.json` | Sanitized signals, redacted persistence, a log a person can read |
 | 0:30–1:10 | The pet stays silent while the level is low, then speaks on its own turn and changes face as the level rises | A slow cadence instead of per-event chatter; escalation with real thresholds |
 | 1:10–1:40 | Dismiss the line, stop the simulator; the level decays | Every line has an escape; the pet does not stay angry at a finished session |
 

@@ -39,8 +39,8 @@ The UI and tray state what is actually happening: the handler behind the socket 
 ```sh
 cd apps/desktop/apps/desktop
 pnpm dev                                            # in one terminal
-node ../../scripts/simulate-site.cjs --site youtube.com
-node ../../scripts/simulate-site.cjs --site tiktok.com --tab-seconds 30   # faster than real time
+pnpm simulate --site youtube.com
+pnpm simulate --site tiktok.com --tab-seconds 30   # 30s of time per second, faster than real time
 ```
 
 Ticks are accumulated and written to `userData/events.json`; the agent reads the window roughly every 45 s and the pet reacts, growing more forceful as the level rises (30 s watching, 90 s concerned, 180 s hostile — the numbers live in `packs/site-catalog.json`). `HOSTILEPET_AGENT_INTERVAL_MS` tunes the cadence between 30 and 60 s, and `HOSTILEPET_HANDLER=mock` restores the protocol-only stub.
