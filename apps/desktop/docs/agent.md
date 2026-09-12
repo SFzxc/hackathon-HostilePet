@@ -52,6 +52,13 @@ MUST NOT include: page HTML, page text, URLs with query strings, cookies, tokens
 
 ## 3. Prompt assembly
 
+**Implemented today.** One system message and one user message per turn: the system message is
+`prompts/persona.md` with `{{character_name}}`, `{{character_look}}`, `{{tone_profile}}`,
+`{{intensity}}`, `{{policy_state}}` filled from the context package and `{{context_json}}` filled
+with the redacted context; the user message is one instruction line, plus the validator's rejection
+reason on the retry. `promptVersion` is stamped on every turn. The three-part split below is the
+target once tools exist — today the schema and the hard constraints live inside the artifact.
+
 Three parts, concatenated in this order:
 
 1. **Kernel contract** — output schema, tool list actually granted this turn, hard constraints that must not depend on the persona file.
@@ -138,7 +145,7 @@ The model MUST NOT modify commitments, budgets, API keys, capabilities or extens
 
 ## 7. Model selection
 
-No model ID is pinned yet. Smoke-test the provider you hold a key for and pick one with reliable structured output / tool calling and acceptable latency for a desktop nudge (target: a line on screen in under ~2 seconds).
+**Pinned for this build: `gpt-5.6-luna`** (`DEFAULT_MODEL` in `packages/agent/src/provider.ts`, ADR 0006 decision 5), overridable with `HOSTILEPET_MODEL`. It was picked without the smoke test below — no key was available when the provider was wired — so the first real turn is also the test: one turn, one JSON object, one line. The loop does not depend on the answer: a model that cannot hold the contract fails validation, gets one retry, and then falls back to the curated lines for the same level. Latency target for a desktop nudge stays a line on screen in under ~2 seconds.
 
 Model and endpoint live in configuration. Never hardcode a model name that will go stale. Log provider errors with codes, never with credentials.
 

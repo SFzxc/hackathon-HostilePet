@@ -57,6 +57,9 @@ export const escalationLadder: Record<EscalationLevel, {
   3: { label: 'hostile', toneIntensity: 'high', moods: ['suspicious', 'intervene'], actions: ['notify', 'say_bubble'], defaultMood: 'intervene', defaultAction: 'notify' }
 }
 
+/** The actions that put words in front of the user; the others change the face or nothing at all. */
+export const SPEAKING_ACTIONS: ReadonlyArray<PetDecision['action']> = ['say_bubble', 'notify']
+
 /**
  * Policy clamp: an out-of-band proposal is downgraded, not obeyed and not silently dropped.
  * The caller logs what was clamped, so "the pet went quiet" is never mistaken for a decision
@@ -75,5 +78,14 @@ export function clampDecision(decision: PetDecision, level: EscalationLevel): { 
     clamped.push(`action:${action}`)
     action = band.defaultAction
   }
-  return { decision: { ...decision, mood, action }, clamped }
+  // A clamped action that cannot speak must not keep the sentence the band refused. Level 0 is the
+  // common case: a proposal for a bubble comes back as "no bubble", and a leftover line would be
+  // exactly what silence is not (`docs/agent.md` §1.1). Note the action is clamped first: a silent
+  // band can also accept a line-carrying action, and then the line is the point.
+  let say = decision.say
+  if (!SPEAKING_ACTIONS.includes(action) && say.trim().length > 0) {
+    clamped.push('say:dropped')
+    say = ''
+  }
+  return { decision: { ...decision, say, mood, action }, clamped }
 }

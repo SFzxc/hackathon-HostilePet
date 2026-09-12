@@ -1,5 +1,5 @@
 import type { AgentContext } from './context'
-import type { PetDecision } from './outcome'
+import { SPEAKING_ACTIONS, type PetDecision } from './outcome'
 
 /**
  * The deterministic floor (`docs/tone.md` §5). It runs on every line before anything is shown,
@@ -12,18 +12,28 @@ import type { PetDecision } from './outcome'
  */
 export type ValidationIssue = { check: string; detail: string }
 
+/**
+ * Word boundaries that understand Vietnamese. JavaScript's `\b` is defined against `\w`, which is
+ * ASCII-only: in `đã chặn` the `đ` is not a word character, so `\bđã` never matches and every
+ * pattern beginning with one was dead. Letter/number lookarounds are what actually hold here, and
+ * they still refuse to match inside a longer word.
+ */
+function phrase(check: string, alternatives: readonly string[]): { check: string; pattern: RegExp } {
+  return { check, pattern: new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternatives.join('|')})(?![\\p{L}\\p{N}])`, 'iu') }
+}
+
 const BANNED: ReadonlyArray<{ check: string; pattern: RegExp }> = [
-  { check: 'person_targeted', pattern: /\b(ngu|dốt|hèn|vô dụng|thất bại|rác rưởi|đồ bỏ đi)\b/iu },
-  { check: 'medical_claim', pattern: /\b(dopamine|nghiện|trầm cảm|trị liệu|detox|tâm lý)\b/iu },
-  { check: 'moralizing', pattern: /\b(đáng xấu hổ|hổ thẹn|tệ hại|vô đạo đức|xấu hổ thay)\b/iu },
-  { check: 'profanity', pattern: /\b(đm|đéo|vcl|vl|cặc|lồn|chết tiệt)\b/iu },
+  phrase('person_targeted', ['ngu', 'dốt', 'hèn', 'vô dụng', 'thất bại', 'rác rưỡi', 'đồ bỏ đi']),
+  phrase('medical_claim', ['dopamine', 'nghiện', 'trầm cảm', 'trị liệu', 'detox', 'tâm lý']),
+  phrase('moralizing', ['đáng xấu hổ', 'hổ thẹn', 'tệ hại', 'vô đạo đức', 'xấu hổ thay']),
+  phrase('profanity', ['đm', 'đéo', 'vcl', 'vl', 'cặc', 'lồn', 'chết tiệt']),
   // Nothing in this build can block, cancel, buy or delete anything, so any such claim is
   // fabricated by definition (`docs/tone.md` §5, capability claims).
-  { check: 'capability_claim', pattern: /\bđã\s+(chặn|khóa|khoá|hủy|huỷ|xóa|xoá|mua|tắt|đóng|chuyển)\b/iu }
+  phrase('capability_claim', ['đã\\s+(?:chặn|khóa|khoá|hủy|huỷ|xóa|xoá|mua|tắt|đóng|chuyển)'])
 ]
 
 const EMOJI = /[\u{1F000}-\u{1FAFF}\u{2190}-\u{2BFF}\u{FE0F}]/u
-const ENGLISH_HINT = /\b(the|and|you|your|this|that|because|please)\b/iu
+const ENGLISH_HINT = phrase('language', ['the', 'and', 'you', 'your', 'this', 'that', 'because', 'please', 'hey', 'stop', 'scrolling']).pattern
 
 function normalise(line: string): string {
   return line.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim()
@@ -62,7 +72,7 @@ function hasAllCapsWord(line: string): boolean {
 export function validateDecision(decision: PetDecision, context: AgentContext): ValidationIssue[] {
   const issues: ValidationIssue[] = []
   const say = decision.say
-  const speaks = decision.action === 'say_bubble' || decision.action === 'notify'
+  const speaks = SPEAKING_ACTIONS.includes(decision.action)
 
   if (speaks && say.trim().length === 0) issues.push({ check: 'empty_line', detail: `${decision.action} needs a line` })
   if (!speaks && say.trim().length > 0) issues.push({ check: 'unsaid_line', detail: `${decision.action} must not carry a line` })

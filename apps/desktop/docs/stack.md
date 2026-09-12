@@ -48,7 +48,7 @@ Node orchestrates model requests and tools; it does not imply local model infere
 
 ## 4. Not chosen yet
 
-- Model provider/model ID, after a structured-output and tool-call smoke test. The provider is OpenAI (ADR 0006); the model ID is not pinned.
+- Model provider/model ID, after a structured-output and tool-call smoke test. The provider is OpenAI and the build pins `gpt-5.6-luna` behind `HOSTILEPET_PROVIDER=openai` (ADR 0006); the smoke test has not been run, so the pin is provisional and overridable with `HOSTILEPET_MODEL`.
 - Keychain binding and Live2D wrapper, after compatibility checks.
 - Character pick and whether grayscale ships; tracked in `AGENTS.md`.
 

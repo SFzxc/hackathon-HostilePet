@@ -8,9 +8,9 @@ The desktop-only scaffold contains Electron main/preload/React renderer, a tray,
 
 The **bridge transport** exists and is the first real protocol code: `packages/contracts` holds the envelope, signal, handshake, lease and outbound schemas plus cross-boundary fixtures, and `apps/desktop/src/main/bridge/` holds the loopback WebSocket server, the lease registry, a **kernel handler** and a **mock handler**. `apps/desktop/src/main/bridge-standalone.ts` runs the same code as a fake kernel for extension-only iteration. The shell starts the bridge in development, reports its phase and peer in Settings and the tray, and releases every lease with `quit` on exit; the bridge does not start in a packaged build (`docs/protocol.md` §1.2).
 
-The **event → agent → pet chain** exists as the first vertical slice of behaviour. `src/main/events/` classifies a host against `packs/site-catalog.json`, accrues qualifying time per page (`site-tracker`), and writes redacted observations to a capped ring buffer (`event-log`, ADR 0008). `packages/agent` turns a context package into one line and one action — provider adapter, deterministic validator, one retry, fallback (ADR 0006). `src/main/agent/turn-runner.ts` owns the 30–60 s cadence and the escalation level; `src/main/pet/presenter.ts` is the only place a line becomes visible, and it always carries its provenance. `scripts/simulate-site.cjs` drives the whole chain without a browser extension.
+The **event → agent → pet chain** exists as the first vertical slice of behaviour. `src/main/events/` classifies a host against `packs/site-catalog.json`, accrues qualifying time per page (`site-tracker`), and writes redacted observations to a capped ring buffer (`event-log`, ADR 0008). `packages/agent` turns a context package into one line and one action — provider adapter, deterministic validator, one retry, fallback (ADR 0006). The default provider is curated; `HOSTILEPET_PROVIDER=openai` swaps in one `POST /chat/completions` whose key `src/main/agent/keychain.ts` reads from Keychain and whose prompt `src/main/agent/persona.ts` loads from `prompts/persona.md`. `src/main/agent/turn-runner.ts` owns the 30–60 s cadence and the escalation level; `src/main/pet/presenter.ts` is the only place a line becomes visible, and it always carries its provenance. `apps/desktop/scripts/simulate-site.cjs` drives the whole chain without a browser extension.
 
-What does not exist: a rule engine, a pack runtime, capability grants, a persisted `state.json`, Keychain integration, any model provider call, and the Live2D character. The mock handler and the fake provider are stubs: they prove the protocol and the loop, never the policy or the language. Position survives window hide/show but is not yet persisted across app restarts. The remaining layout below is a target; `apps/desktop/src/main/{bridge,events,agent,pet,focus}`, `apps/desktop/packs` and `packages/{contracts,agent}` are what exists.
+What does not exist: a rule engine, a pack runtime, capability grants, a persisted `state.json`, and the Live2D character. The model call exists but has only ever been exercised against a stub transport — it has never reached the API, so the pinned model is unproven (`docs/agent.md` §7). The mock handler and the curated provider are stand-ins: they prove the protocol and the loop, never the policy or the language. Position survives window hide/show but is not yet persisted across app restarts. The remaining layout below is a target; `apps/desktop/src/main/{bridge,events,agent,pet,focus}`, `apps/desktop/packs` and `packages/{contracts,agent}` are what exists.
 
 Run commands and verification status are in `README.md`. macOS Spaces/fullscreen, click behavior, focus and display unplug require real-window checks before the window spike is considered complete.
 
@@ -22,14 +22,14 @@ apps/
     src/main/               # Electron lifecycle, tray/windows, core wiring, IPC handlers
     src/main/bridge/        # Loopback WebSocket server, lease registry, kernel + mock handlers
     src/main/events/        # Site catalog, per-page accrual, capped event log
-    src/main/agent/         # Turn cadence, escalation level, context assembly
+    src/main/agent/         # Turn cadence, escalation level, context assembly, Keychain, persona
     src/main/pet/           # Presenter (line, face, badge) and expression precedence
     src/main/focus/         # macOS Focus sensor (ADR 0007)
     src/main/bridge-standalone.ts  # Fake-kernel CLI (dev only — docs/browser-pack.md §5)
     src/preload/            # Narrow contextBridge API; no raw IPC exposure
     src/renderer/           # React: pet UI, onboarding, chat, pack manager, activity log
     src/shared/             # Schemas shared across the IPC boundary
-    scripts/                # focus-state.cjs, simulate-site.cjs
+    scripts/                # focus-state.cjs (workspace) · apps/desktop/scripts/: smoke, bridge-handshake, simulate-site
   extension/                # Browser sensor transport (MV3)
     entrypoints/
     src/adapters/           # YouTube Shorts, demo shop, verified real shop
@@ -37,7 +37,7 @@ apps/
 packages/
   kernel/                   # Event bus, rule engine, policy, leases, scheduler
   pack-runtime/             # Manifest load, capability grants, lifecycle, pack_kv
-  agent/                    # Provider adapter, context builder, tool runtime, validator
+  agent/                    # Provider adapters (curated, OpenAI), prompt assembly, validator
   store/                    # One JSON snapshot, atomic write (SQLite deferred — ADR 0003)
   bridge/                   # Loopback WebSocket server + protocol
   contracts/                # Protocol + event schemas + cross-boundary fixtures (exists)
