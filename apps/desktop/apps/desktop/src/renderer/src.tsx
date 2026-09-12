@@ -56,6 +56,9 @@ function App() {
     {error && <span role="alert">{error}</span>}
   </main>
   return <main className="settings"><header className="titlebar"><span className="wordmark">hostilepet<span className="period">.</span></span></header>
+    {/* The honesty rule for a demo build (`docs/hackathon.md` §4): a lowered clock or threshold
+        is said out loud, on the screen the demo is standing in front of, not implied. */}
+    {status?.events.demoMode && <p className="demo-badge" role="note">DEMO · pacing lowered so the pet reacts in seconds, not minutes.</p>}
     <section className="intro"><div><h1>Meet your<br/><em>desktop companion.</em></h1><p className="lede">A place on your desktop.<br/>It follows your Focus mode.</p></div><div className="portrait"><Pet large/></div></section>
     <section className="preferences" aria-label="Desktop settings"><div className="row"><div><h2>Keep me around</h2><p>Show the pet on your desktop. Drag it to move.</p></div><button className={`switch ${status?.petVisible ? 'on' : ''}`} role="switch" aria-checked={status?.petVisible ?? false} aria-label="Show desktop pet" disabled={!status} onClick={() => { command(status?.petVisible ? 'hide-pet' : 'show-pet') }}><span/></button></div>
     <div className="row"><div><h2>Focus mode</h2><p>{focusText(status?.focus)}</p>{needsPermission && <p className="hint">macOS reads this permission when an app starts, so allow it, then quit and reopen.</p>}</div><div className="row-side"><span className="status"><i/>{focusChip(status?.focus)}</span>{needsPermission && <div className="row-actions"><button onClick={() => { command('open-focus-permission') }}>Grant permission…</button><button onClick={() => { command('relaunch') }}>Quit and reopen</button></div>}</div></div>

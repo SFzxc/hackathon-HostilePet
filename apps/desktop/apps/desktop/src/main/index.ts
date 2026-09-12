@@ -113,8 +113,8 @@ const agentIntervalMs = Math.max(30_000, Math.min(60_000, readMs(process.env.HOS
  * what the user tunes; the interval above is only the backstop for a stream that stopped without
  * ever opening a burst.
  */
-const agentSettleMs = readMs(process.env.HOSTILEPET_AGENT_SETTLE_MS, demoFast ? 2_000 : 20_000, 1_000)
-const agentMaxWaitMs = Math.max(agentSettleMs, readMs(process.env.HOSTILEPET_AGENT_MAX_WAIT_MS, demoFast ? 4_000 : 60_000, agentSettleMs))
+const agentSettleMs = readMs(process.env.HOSTILEPET_AGENT_SETTLE_MS, demoFast ? 1_500 : 20_000, 1_000)
+const agentMaxWaitMs = Math.max(agentSettleMs, readMs(process.env.HOSTILEPET_AGENT_MAX_WAIT_MS, demoFast ? 2_500 : 60_000, agentSettleMs))
 /**
  * How long one site waits between two `site.observed` records. The browser ticks once a second,
  * so this is the clock that decides how much of that resolution becomes history — the tracker
@@ -213,8 +213,10 @@ const eventsSnapshot = (): DesktopStatus['events'] => {
     lastSite: site,
     lastCategory: category,
     lastAt: tail.at(-1)?.at ?? null,
-    // A catalog whose watch threshold is under five minutes exists to make a demo happen.
-    demoMode: catalog !== null && isDemoCatalog(catalog),
+    // A catalog whose watch threshold is under five minutes exists to make a demo happen — and
+    // so does a lowered clock, which is the one this window can actually see. Either is enough
+    // to badge the run (`docs/hackathon.md` §4).
+    demoMode: demoFast || (catalog !== null && isDemoCatalog(catalog)),
     recent: [...tail].reverse().map(formatRecord),
     detail: stats.detail
   }
@@ -515,6 +517,8 @@ else {
         catalog,
         eventLog,
         observeThrottleMs,
+        presenceStaleMs,
+        pageStaleMs,
         onRecorded: () => {
           turnRunner?.notifyActivity()
           notify()
