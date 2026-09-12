@@ -1,0 +1,18 @@
+# Dependencies and generated output
+node_modules/
+dist/
+out/
+build/
+.next/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Operating-system files
+.DS_Store
+
+# Video editing and raw footage are managed outside Git by default
+teams/demo-video/raw-footage/*
+!teams/demo-video/raw-footage/.gitkeep
