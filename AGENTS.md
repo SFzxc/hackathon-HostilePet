@@ -1,8 +1,8 @@
-# Unrot Pet — Agent Guide
+# HostilePet — Agent Guide
 
 ## Purpose
 
-Unrot Pet is a desktop product with a browser extension and a local service.
+HostilePet is a desktop product with a browser extension and a local service.
 This repository is organized so product, engineering, marketing, demo-video,
 and growth teams can work independently while sharing the same product context.
 
