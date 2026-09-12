@@ -273,16 +273,23 @@ function togglePet(visible: boolean): void {
   log(visible ? 'show-pet' : 'hide-pet'); notify()
 }
 /**
- * The pet's window is big enough for whatever it is wearing: a bare creature, or a creature
- * with a bubble above it. A line that arrives while the window is still 160 px wide would be
- * clipped by the window's own edge, which reads as a bug rather than as a remark.
+ * The pet's window, in its two states: bare, and with a bubble above it. A line that arrives
+ * while the window is still sized for the bare character would be clipped by the window's own
+ * edge, which reads as a bug rather than as a remark.
+ *
+ * These are a pair with the renderer's `.sprite` size in `style.css`: the character is sized to
+ * fit the collapsed state with the window's padding to spare. Growing the character means growing
+ * both, plus the expanded height the smoke test asserts.
  */
+const PET_WINDOW = { width: 176, height: 210 }
+const PET_WINDOW_EXPANDED = { width: 300, height: 300 }
+/** Gap between the pet's window and the corner of the work area it parks in. */
+const PET_MARGIN = 30
 function refreshPet(): void {
   if (pet) {
     const line = presenter?.current() ?? null
     const expanded = preview !== 'idle' || line !== null
-    const width = expanded ? 280 : 160
-    const height = expanded ? 270 : 170
+    const { width, height } = expanded ? PET_WINDOW_EXPANDED : PET_WINDOW
     const bounds = pet.getBounds()
     if (bounds.width !== width || bounds.height !== height) {
       pet.setBounds(fitInWorkArea({ x: bounds.x + Math.round((bounds.width - width) / 2),
@@ -431,7 +438,8 @@ else {
         reportBridge({ event: 'bridge.failed', code: state.phase, detail: state.detail ?? 'no detail' })
       }
     }
-    pet = new BrowserWindow({ width: 160, height: 170, x: area.x + area.width - 190, y: area.y + area.height - 200,
+    pet = new BrowserWindow({ ...PET_WINDOW, x: area.x + area.width - PET_WINDOW.width - PET_MARGIN,
+      y: area.y + area.height - PET_WINDOW.height - PET_MARGIN,
       show: false, frame: false, transparent: true, resizable: false, hasShadow: false, alwaysOnTop: true,
       skipTaskbar: true, focusable: false,
       webPreferences: { preload: join(__dirname, '../preload/index.js'), sandbox: true, contextIsolation: true, nodeIntegration: false } })

@@ -1,25 +1,9 @@
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { DesktopAPI, DesktopCommand, DesktopStatus, PetExpression } from '../shared/desktop'
+import type { DesktopAPI, DesktopCommand, DesktopStatus } from '../shared/desktop'
+import { Pet } from './pet/Pet'
 import './style.css'
 declare global { interface Window { desktop: DesktopAPI } }
-/**
- * The placeholder pet. Focus expressions are drawn here rather than in the shell so the
- * renderer stays the only place that knows what a state looks like — and so replacing this
- * placeholder with a character pack is a swap of one component.
- *
- * The z's are decoration and hidden from assistive technology; the expression itself is in
- * the label, because "the pet is asleep" is information a screen reader user is owed.
- */
-function Pet({ large = false, expression = 'idle' }: { large?: boolean; expression?: PetExpression }) {
-  return <div className={`creature ${large ? 'large' : ''} ${expression}`} aria-label={`Geometric placeholder pet, ${expression}`} role="img">
-    <div className="ear left"/><div className="ear right"/>
-    <div className="face"><i/><i/></div>
-    {expression === 'sleeping' && <span className="zzz" aria-hidden="true">z z z</span>}
-    {expression === 'intervene' && <span className="bang" aria-hidden="true">!</span>}
-    <div className="feet"><b/><b/></div>
-  </div>
-}
 /**
  * What the settings window may say about Focus. It reports a reading or the reason there
  * is none — the one thing it may not do is turn "could not read" into "no Focus mode",

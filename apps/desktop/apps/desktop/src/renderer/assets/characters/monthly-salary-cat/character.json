@@ -1,0 +1,18 @@
+{
+  "id": "monthly-salary-cat",
+  "displayName": "Monthly salary cat（月薪猫）",
+  "sheet": "spritesheet.webp",
+  "atlas": "codex-pet@1",
+  "kind": "animal",
+  "expressions": {
+    "idle": "idle",
+    "focused": "running",
+    "sleeping": "waiting",
+    "dozing": "waiting",
+    "thinking": "review",
+    "speaking": "waving",
+    "suspicious": "review",
+    "intervene": "failed",
+    "pleased": "jumping"
+  }
+}

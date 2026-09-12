@@ -44,7 +44,7 @@ async function run() {
   await pet.webContents.executeJavaScript("window.desktop.command('preview-thinking')")
   await wait(150)
   assert.equal((await read()).preview, 'thinking')
-  assert.equal(pet.getBounds().height, 270)
+  assert.equal(pet.getBounds().height, 300)
   assert.equal(await pet.webContents.executeJavaScript("!!document.querySelector('.thinking')"), true)
   await writeFile(join(tmpdir(), 'hostilepet-thinking.png'), (await pet.webContents.capturePage()).toPNG())
   await pet.webContents.executeJavaScript("window.desktop.command('preview-speaking')")
