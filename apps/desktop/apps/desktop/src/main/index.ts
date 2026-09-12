@@ -4,6 +4,8 @@ import { createProvider, escalationLadder, type AgentOutcome } from '@hostile-pe
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { commandSchema, type DesktopStatus } from '../shared/desktop'
+import { readOpenAiKey } from './agent/keychain'
+import { loadPersona } from './agent/persona'
 import { createTurnRunner, type TurnRunner } from './agent/turn-runner'
 import { createKernelHandler } from './bridge/kernel-handler'
 import { createMockHandler } from './bridge/mock-handler'
@@ -49,7 +51,20 @@ let presenter: Presenter | undefined
 let catalog: SiteCatalog | null = null
 let catalogPath: string | null = null
 let catalogDetail: string | null = 'the site catalog has not been loaded yet'
-const providerInfo = createProvider()
+/**
+ * `HOSTILEPET_PROVIDER=openai` calls the model; anything missing — no key in Keychain, no readable
+ * persona artifact — leaves the curated provider in place and says which one is running. The key
+ * is read here, at startup, and never leaves this scope (non-negotiable 8).
+ */
+const providerSetup =
+  process.env.HOSTILEPET_PROVIDER === 'openai'
+    ? (() => {
+        const key = readOpenAiKey()
+        const persona = loadPersona(app.getAppPath(), process.resourcesPath)
+        return { apiKey: key.key, personaTemplate: persona.template, detail: key.detail ?? persona.detail }
+      })()
+    : { apiKey: null, personaTemplate: null, detail: null }
+const providerInfo = createProvider(process.env, providerSetup)
 /**
  * 30–60 s, clamped: the user asked for a slow cadence, and a cadence faster than the shortest
  * thing worth analysing would only produce turns about nothing.

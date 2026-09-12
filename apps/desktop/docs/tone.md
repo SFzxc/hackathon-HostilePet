@@ -94,7 +94,7 @@ Rejections are never silent: log `tone.rejected` with the check id, `packId`, `r
 
 ## 7. Fallback line packs
 
-`packages/tone/fallback/vi.json` — a small curated set, roughly five lines per policy state × two intensities, deliberately plainer than the persona.
+`packages/tone/fallback/vi.json` — a small curated set, roughly five lines per policy state × two intensities, deliberately plainer than the persona. In this build the curated set lives in `packages/agent/src/lines/vi.ts`, is the **default** provider, and is also what every failed model turn falls back to.
 
 - Same floor applies: no fabrication, no cruelty, exit legible.
 - No placeholders that require data which may be missing; fallbacks must work with nothing but the state.

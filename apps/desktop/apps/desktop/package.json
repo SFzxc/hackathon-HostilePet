@@ -51,6 +51,10 @@
       {
         "from": "../../packs",
         "to": "packs"
+      },
+      {
+        "from": "../../prompts",
+        "to": "prompts"
       }
     ],
     "mac": {

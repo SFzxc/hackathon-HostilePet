@@ -19,7 +19,9 @@ Two constraints bound the choice:
 1. **Adopt LangGraph JS** — `@langchain/langgraph` — as the graph runtime, with **`@langchain/core`** for messages, tools and structured output. They live in `packages/agent` (`docs/engineering.md` §1).
 2. **Pinned versions:** `@langchain/langgraph` 1.4.15, `@langchain/core` 1.2.11, zod 4.6.2. Zod was already the workspace pin and satisfies LangGraph's peer range `^3.25.32 || ^4.2.0`.
 3. **Do not adopt the umbrella `langchain` package.** It pulls `langsmith` (a tracing client) and `@langchain/langgraph-sdk` (a LangGraph Platform HTTP client) into the application. `docs/stack.md` §3 forbids telemetry SDKs and neither is needed for a local loop.
-4. **Provider: OpenAI** (`AGENTS.md` decision 1). The model ID stays open until the structured-output and tool-call smoke test in `docs/agent.md` §7. No provider package is installed by this ADR.
+4. **Provider: OpenAI** (`AGENTS.md` decision 1). No provider package is installed: `packages/agent/src/provider.ts` makes one `POST /chat/completions` with `response_format: { type: 'json_object' }` through `fetch`, and parses `{say, mood, action}`.
+5. **Model: `gpt-5.6-luna`**, pinned as `DEFAULT_MODEL` in that file and overridable with `HOSTILEPET_MODEL`. The structured-output smoke test in `docs/agent.md` §7 has not been run — no key was available when this was wired — so the first real turn is the test. Revisit if the model proves unreliable at the contract; nothing downstream depends on the name.
+6. **Selection:** the curated provider stays the default. `HOSTILEPET_PROVIDER=openai` selects the model, and any missing piece — no Keychain item, unreadable persona artifact — falls back to the curated lines **with a reason the UI shows** (`docs/agent.md` §6). The API key comes from the login Keychain (`hostilepet.openai`, read in `apps/desktop/src/main/agent/keychain.ts`) and is passed to one call; it is never persisted or logged.
 
 ## Boundaries
 
@@ -68,5 +70,5 @@ Pinning is not completion. In-app wiring stays unproven until the desktop smoke 
 
 - Main-process startup latency or idle memory regresses measurably on the demo machine.
 - A checkpoint store is proposed as authoritative policy state — that is a superseding ADR, not a configuration change.
-- The provider changes, or a local model becomes the default.
+- The provider changes, the pinned model proves unreliable at the output contract, or a local model becomes the default.
 - The agent is moved into a `utilityProcess` (an isolation path ADR 0004 keeps open); this ADR stays valid, but the serialization boundary needs its own decision.
