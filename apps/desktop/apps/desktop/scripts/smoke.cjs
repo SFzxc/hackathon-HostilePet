@@ -1,0 +1,80 @@
+// Run with Electron against the built application. Uses a temporary user-data directory.
+const { app, BrowserWindow } = require('electron')
+const { mkdtemp, writeFile } = require('node:fs/promises')
+const { tmpdir } = require('node:os')
+const { join } = require('node:path')
+const assert = require('node:assert/strict')
+const { once } = require('node:events')
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
+const timeout = setTimeout(() => { console.error('Desktop smoke timed out'); app.exit(1) }, 20000)
+async function run() {
+  app.setPath('userData', await mkdtemp(join(tmpdir(), 'hostilepet-smoke-')))
+  require('../out/main/index.js')
+  await app.whenReady()
+  let pet
+  for (let i = 0; i < 100; i++) {
+    pet = BrowserWindow.getAllWindows().find(w => w.webContents.getURL().endsWith('#pet'))
+    if (pet && !pet.webContents.isLoading()) break
+    await wait(100)
+  }
+  assert.ok(pet, 'pet window created')
+  await wait(300)
+  const read = () => pet.webContents.executeJavaScript('window.desktop.status()')
+  assert.equal((await read()).character, 'placeholder')
+  // The bridge is real transport; nothing behind it is. Both facts are asserted, because
+  // asserting only the first is how a mock starts reading as a working pack.
+  assert.equal((await read()).browser, 'no-pack-installed')
+  assert.equal((await read()).handler, 'mock')
+  assert.equal((await read()).bridge.phase, 'listening',
+    'expected the bridge listening on 54321; stop any other bridge:mock host holding that port first')
+  assert.equal((await read()).bridge.peer, null)
+  assert.equal((await read()).bridge.activeLeases, 0)
+  assert.equal(pet.isAlwaysOnTop(), true)
+  assert.equal(pet.isFocusable(), false)
+  const boundary = await pet.webContents.executeJavaScript('({ node: typeof process, require: typeof require })')
+  assert.deepEqual(boundary, { node: 'undefined', require: 'undefined' })
+  await pet.webContents.executeJavaScript("window.desktop.command('hide-pet')")
+  assert.equal((await read()).petVisible, false)
+  await pet.webContents.executeJavaScript("window.desktop.command('show-pet')")
+  assert.equal((await read()).petVisible, true)
+  const initialBounds = pet.getBounds()
+  pet.setPosition(initialBounds.x - 100, initialBounds.y)
+  const originalBounds = pet.getBounds()
+  await pet.webContents.executeJavaScript("window.desktop.command('preview-thinking')")
+  await wait(150)
+  assert.equal((await read()).preview, 'thinking')
+  assert.equal(pet.getBounds().height, 270)
+  assert.equal(await pet.webContents.executeJavaScript("!!document.querySelector('.thinking')"), true)
+  await writeFile(join(tmpdir(), 'hostilepet-thinking.png'), (await pet.webContents.capturePage()).toPNG())
+  await pet.webContents.executeJavaScript("window.desktop.command('preview-speaking')")
+  await wait(150)
+  assert.match(await pet.webContents.executeJavaScript('document.body.innerText'), /Mình ở đây/)
+  await writeFile(join(tmpdir(), 'hostilepet-speaking.png'), (await pet.webContents.capturePage()).toPNG())
+  await pet.webContents.executeJavaScript("document.querySelector('.speech-heading button').click()")
+  await wait(150)
+  assert.equal((await read()).preview, 'idle')
+  assert.deepEqual(pet.getBounds(), originalBounds)
+  assert.equal(await pet.webContents.executeJavaScript("!!document.querySelector('.placeholder-label')"), false)
+  await pet.webContents.executeJavaScript("window.desktop.command('open-settings')")
+  let settings
+  for (let i = 0; i < 100; i++) {
+    settings = BrowserWindow.getAllWindows().find(w => w !== pet)
+    if (settings && !settings.webContents.isLoading()) break
+    await wait(100)
+  }
+  assert.ok(settings)
+  await wait(300)
+  const copy = await settings.webContents.executeJavaScript('document.body.innerText')
+  assert.match(copy, /NOT OBSERVING/)
+  assert.doesNotMatch(copy, /could not|Could not/)
+  await writeFile(join(tmpdir(), 'hostilepet-settings.png'), (await settings.webContents.capturePage()).toPNG())
+  const closed = once(settings, 'closed')
+  settings.close()
+  await closed
+  assert.equal(pet.isDestroyed(), false)
+  assert.equal(BrowserWindow.getAllWindows().length, 1)
+  console.info('PASS: sandbox, preload, real IPC, show/hide, settings, close-to-tray. Screenshot: ' + join(tmpdir(), 'hostilepet-settings.png'))
+  clearTimeout(timeout)
+  app.quit()
+}
+run().catch(error => { console.error(error); app.exit(1) })

@@ -1,0 +1,14 @@
+{
+  "name": "hostile-pet",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev": "pnpm --filter @hostile-pet/desktop dev",
+    "build": "pnpm --filter @hostile-pet/desktop build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "package": "pnpm --filter @hostile-pet/desktop package",
+    "smoke": "pnpm --filter @hostile-pet/desktop smoke"
+  }
+}

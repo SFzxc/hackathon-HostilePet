@@ -1,0 +1,53 @@
+{
+  "name": "@hostile-pet/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-first desktop companion \u2014 desktop shell",
+  "author": "HostilePet",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev --watch",
+    "build": "electron-vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "pnpm build && electron-builder --mac --dir",
+    "smoke": "pnpm build && electron scripts/smoke.cjs",
+    "bridge:mock": "electron-vite build && node out/main/bridge-standalone.js"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "ws": "8.21.3",
+    "zod": "4.6.2"
+  },
+  "devDependencies": {
+    "@hostile-pet/contracts": "workspace:*",
+    "electron": "44.3.0",
+    "electron-vite": "5.0.0",
+    "electron-builder": "26.15.3",
+    "vite": "7.3.6",
+    "typescript": "7.0.2",
+    "@vitejs/plugin-react": "5.2.0",
+    "vitest": "4.1.11",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/node": "22.20.2",
+    "@types/ws": "8.18.1"
+  },
+  "build": {
+    "appId": "dev.hostilepet.desktop",
+    "productName": "HostilePet",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "!out/main/bridge-standalone.js",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "identity": null
+    }
+  }
+}

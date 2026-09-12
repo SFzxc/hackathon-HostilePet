@@ -16,3 +16,5 @@ build/
 # Video editing and raw footage are managed outside Git by default
 teams/demo-video/raw-footage/*
 !teams/demo-video/raw-footage/.gitkeep
+
+.hermes/
