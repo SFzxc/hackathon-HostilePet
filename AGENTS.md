@@ -24,6 +24,8 @@ and growth teams can work independently while sharing the same product context.
 ## Collaboration rules
 
 - Keep executable product code inside `apps`, `extensions`, or `packages`.
+- Before planning, designing, or implementing product behavior, review the relevant documentation in `docs/product/`.
+- Treat product documents in `docs/product/` as the source of truth for product requirements; resolve conflicts by checking the most recently dated document or asking for clarification.
 - Define a shared interface in `packages/contracts` before coupling the desktop app, extension, or local server.
 - Keep publishable marketing assets in `teams/marketing/assets` and video source/exports in `teams/demo-video`.
 - Record cross-team decisions in `docs/decisions` using a dated Markdown file.
