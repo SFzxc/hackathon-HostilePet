@@ -9,7 +9,7 @@
 
 HostilePet is an opt-in macOS focus companion represented by a floating virtual pet. It observes user-approved productivity signals, changes mood based on an active focus session, and escalates from gentle reminders to reversible focus interventions when the user repeatedly abandons their stated goal.
 
-Its voice is blunt, funny, and slightly confrontational. It must never be cruel, discriminatory, threatening, or impossible to dismiss. The user always controls monitoring and can immediately pause or end every intervention.
+Its voice is deliberately toxic, adversarial, and confrontational. The pet is a fictional antagonist whose job is to challenge excuses rather than entertain or gently encourage the user. Its copy may be harsh and taunting, but must never be discriminatory, threatening, or impossible to dismiss. The user always controls monitoring and can immediately pause or end every desktop intervention.
 
 The first delivery is a standalone macOS menu-bar app. Chrome sensing and browser-level interventions are specified as Phase 2 so the desktop MVP can be built and demonstrated independently.
 
@@ -118,7 +118,8 @@ Escalation must have a two-minute cooldown at a given state so the pet does not 
 - Use macOS text-to-speech for the MVP; no cloud speech dependency.
 - Sound is off by default with volume and mute controls.
 - Personality levels: **Gentle**, **Snarky**, and **Brutal**. Brutal is still non-abusive and profanity-free by default.
-- Copy is short and fictional: “That tab looks suspiciously unrelated to your goal.”
+- Copy is short, fictional, and intentionally toxic: “That excuse is thinner than your self-control.”
+- The personality does not need to be funny. Its role is to be a hostile accountability antagonist that questions rationalizations and calls out avoidance.
 - The product may not fabricate authority or pressure a user to reveal sensitive information.
 
 ## Intervention Safety Requirements
@@ -144,10 +145,13 @@ The Chrome extension communicates with the macOS companion through a consented, 
 ### Shopping Cooling-Off
 
 1. On explicitly enabled commerce sites such as Amazon or Shopee, recognize supported checkout and buy-now controls.
-2. Evaluate user-selected conditions, such as late-night time, a visible-price threshold, or rapid cart additions.
-3. Overlay the specific checkout control with an explanation and cooling-off choices: 10 minutes, 1 hour, or until morning.
-4. The user can deliberately override the cooling-off period; the extension logs only the override event if local history is enabled.
-5. A future voice explanation starts only when the user presses **Explain by voice**; its result is advisory, never a permanent block.
+2. Evaluate user-selected risk conditions, such as late-night time, a visible-price threshold, or rapid cart additions.
+3. When a risk rule triggers, overlay and intercept the specific checkout control. Replace its label with a hostile status, such as **CONVINCE THE PET FIRST**.
+4. The user must answer a sequence of pet questions before a purchase can continue. Required questions include: **What specific problem does this solve today?**, **What do you already own that serves the same purpose?**, and **Why is waiting until tomorrow unacceptable?**
+5. The gate evaluates answers against explicit rules: answers must name a concrete use case, distinguish the item from an existing alternative, and give a time-sensitive reason. Empty, evasive, emotional, or copy-pasted answers fail.
+6. On a pass, the extension restores the original checkout control for one deliberate purchase attempt. On a fail, it disables/intercepts the buy action, keeps the hostile overlay visible, and starts the configured cooling-off period (10 minutes, 1 hour, or until morning).
+7. Clicking Buy during a cooling-off period must cause no checkout action. The extension shows the remaining cooldown and another hostile prompt instead.
+8. A future voice explanation starts only when the user presses **Explain by voice**. Voice is an input method for the same gate, not an automatic recording feature.
 
 ## Functional Requirements
 
@@ -166,7 +170,9 @@ The Chrome extension communicates with the macOS companion through a consented, 
 | FR-11 | Every intervention shall provide a visible, keyboard-accessible escape route. |
 | FR-12 | Local session history shall be deletable by the user. |
 | FR-13 | The Phase 2 browser bridge shall share only necessary event summaries through authenticated local communication. |
-| FR-14 | Phase 2 browser interventions shall be explainable and user-overridable. |
+| FR-14 | A triggered Phase 2 shopping guard shall intercept checkout until the user passes the pet-question gate or its configured cooling-off period expires. |
+| FR-15 | A failed shopping gate shall disable or intercept the targeted buy action so a click causes no checkout action during cooling-off. |
+| FR-16 | The pet-question gate shall evaluate concrete-use, existing-alternative, and urgency answers using documented pass/fail rules. |
 
 ## Non-Functional Requirements
 
