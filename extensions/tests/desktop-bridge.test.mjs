@@ -28,7 +28,10 @@ test('handshakes, sends one recorder tick, and receives a desktop decision',asyn
  const tick=socket.sent[1];
  assert.equal(tick.type,'signal.browser.session.tick');
  assert.deepEqual(tick.context,{tabId:12,documentId:'page-1',windowFocused:true});
- assert.equal(tick.payload.activeMs,15000);
+ // A 15 s jump on the first tick is a gap, not one interval of attention: the worker restarted,
+ // or the desktop connected late. One cadence (1 s) is all the bridge can attest to, and
+ // under-claiming real time is the honest direction.
+ assert.equal(tick.payload.activeMs,1000);
  assert.equal(tick.payload.seq,1);
 
  const decision={protocolVersion:1,messageId:crypto.randomUUID(),timestamp:Date.now(),type:'intervention.request',context:{tabId:12,documentId:'page-1',windowFocused:true},payload:{lease:{leaseId:crypto.randomUUID()}}};
